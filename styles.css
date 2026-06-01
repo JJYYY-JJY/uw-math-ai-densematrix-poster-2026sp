@@ -17,7 +17,7 @@
 }
 
 @page {
-  size: 13.333in 7.5in;
+  size: 20in 11.25in;
   margin: 0;
 }
 
@@ -508,7 +508,7 @@ pre {
   }
 
   .poster {
-    width: 13.333in;
-    height: 7.5in;
+    width: 20in;
+    height: 11.25in;
   }
 }
