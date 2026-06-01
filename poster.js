@@ -31,7 +31,7 @@
 
   $("metric-records").textContent = data.record_count ?? "--";
   $("metric-materialized").textContent = data.materialized_record_count ?? "--";
-  $("metric-max-size").textContent = data.max_rows ? `n=${data.max_rows}` : "--";
+  $("metric-max-size").textContent = data.max_rows ?? "--";
 
   const sourceLine = $("source-line");
   if (sourceLine) {
@@ -63,9 +63,9 @@
       return;
     }
 
-    const width = 960;
-    const height = 405;
-    const margin = { top: 26, right: 42, bottom: 74, left: 88 };
+    const width = 980;
+    const height = 200;
+    const margin = { top: 16, right: 30, bottom: 30, left: 58 };
     const plotWidth = width - margin.left - margin.right;
     const plotHeight = height - margin.top - margin.bottom;
     const sizes = [...new Set(rows.map((row) => Number(row.rows)))].sort((a, b) => a - b);
@@ -96,10 +96,10 @@
     }
     const grid = yTicks.map((tick) => {
       const yy = y(tick);
-      return `<line x1="${margin.left}" y1="${yy}" x2="${width - margin.right}" y2="${yy}" stroke="#D8DDE6" stroke-width="1" />
-        <text x="${margin.left - 12}" y="${yy + 5}" text-anchor="end" font-size="13" font-weight="800" fill="#706E6B">${formatAxis(tick)}</text>`;
+      return `<line x1="${margin.left}" y1="${yy}" x2="${width - margin.right}" y2="${yy}" stroke="#D8DDE6" stroke-width="1.2" />
+        <text x="${margin.left - 10}" y="${yy + 5}" text-anchor="end" font-size="15" font-weight="800" fill="#706E6B">${formatAxis(tick)}</text>`;
     }).join("");
-    const xLabels = sizes.map((size) => `<text x="${x(size)}" y="${height - 22}" text-anchor="middle" font-size="16" font-weight="800" fill="#032D60">${size}</text>`)
+    const xLabels = sizes.map((size) => `<text x="${x(size)}" y="${height - 9}" text-anchor="middle" font-size="15" font-weight="800" fill="#032D60">${size}</text>`)
       .join("");
     const paths = series.map((spec) => {
       const points = sizes.map((size) => {
@@ -110,8 +110,8 @@
         return { x: x(size), y: y(row[spec.key]), value: Number(row[spec.key]) };
       }).filter(Boolean);
       const d = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
-      const circles = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="5" fill="${spec.color}" stroke="#FFFFFF" stroke-width="2" />`).join("");
-      return `<path d="${d}" fill="none" stroke="${spec.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${spec.dash}" />
+      const circles = points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="6" fill="${spec.color}" stroke="#FFFFFF" stroke-width="2.2" />`).join("");
+      return `<path d="${d}" fill="none" stroke="${spec.color}" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${spec.dash}" />
         ${circles}`;
     }).join("");
 
@@ -120,8 +120,8 @@
       ${grid}
       <line x1="${margin.left}" y1="${margin.top + plotHeight}" x2="${width - margin.right}" y2="${margin.top + plotHeight}" stroke="#D8DDE6" stroke-width="2" />
       <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotHeight}" stroke="#D8DDE6" stroke-width="2" />
-      <text x="22" y="34" font-size="15" font-weight="800" fill="#706E6B">median ms</text>
-      <text x="${width - 42}" y="34" text-anchor="end" font-size="15" font-weight="800" fill="#706E6B">rows</text>
+      <text x="${margin.left}" y="16" font-size="15" font-weight="800" fill="#706E6B">median ms</text>
+      <text x="${width - margin.right}" y="16" text-anchor="end" font-size="15" font-weight="800" fill="#706E6B">rows</text>
       ${paths}
       ${xLabels}
     </svg>`;
@@ -166,7 +166,7 @@
     }
     host.innerHTML = rows
       .map((row) => `<div class="algorithm-row">
-        <strong>${escapeXml(row.operation)}</strong>
+        <strong title="${escapeXml(row.operation)}">${escapeXml(algorithmLabel(row.operation))}</strong>
         <span>n=${escapeXml(String(row.rows))}</span>
         <span>${fmt(row.median_ms, 2)} ms</span>
       </div>`)
@@ -186,5 +186,15 @@
       return `${value / 1000}k`;
     }
     return String(value);
+  }
+
+  function algorithmLabel(operation) {
+    return {
+      rowEchelonForm: "REF",
+      reducedRowEchelonForm: "RREF",
+      luFactorization: "LU factor",
+      gaussDet: "Gauss det",
+      luDet: "LU det",
+    }[operation] ?? operation;
   }
 })();
