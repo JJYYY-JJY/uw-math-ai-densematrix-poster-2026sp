@@ -420,7 +420,7 @@ h1 {
 .theorem-grid {
   display: grid;
   gap: 8px;
-  margin: 10px 0 14px;
+  margin: 10px 0 12px;
 }
 
 code,
