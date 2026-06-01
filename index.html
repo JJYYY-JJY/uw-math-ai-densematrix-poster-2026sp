@@ -50,9 +50,8 @@
         <article class="panel claim-panel">
           <h2>Why DenseMatrix</h2>
           <p>
-            DenseMatrix stores entries in row-major arrays, so matrix code can
-            execute over contiguous data instead of repeatedly re-evaluating
-            pointwise functions.
+            Row-major arrays let kernels work over contiguous data instead of
+            re-evaluating pointwise Matrix functions.
           </p>
           <div class="pipeline" aria-label="DenseMatrix proof and execution pipeline">
             <div class="pipe-node">Matrix API</div>
