@@ -35,7 +35,7 @@
 
   const sourceLine = $("source-line");
   if (sourceLine) {
-    sourceLine.textContent = "Bench: 30 repeats · pinned core · 2026sp suite";
+    sourceLine.textContent = "Bench: 30 repeats · pinned CPU core · 2026sp suite";
   }
 
   const speedups = scaling.map((row) => Number(row.speedup)).filter(Number.isFinite);
