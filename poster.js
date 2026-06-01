@@ -36,7 +36,7 @@
   if (speedupRange) {
     const min = Math.min(...speedups);
     const max = Math.max(...speedups);
-    speedupRange.textContent = speedups.length ? `${fmt(min, 1)}-${fmt(max, 1)}x` : "--x";
+    speedupRange.textContent = speedups.length ? `${fmt(min, 1)}-${fmt(max, 1)}x faster` : "--x";
   }
 
   renderMultiplicationChart(scaling);
