@@ -31,7 +31,8 @@
 
   $("metric-records").textContent = data.record_count ?? "--";
   $("metric-materialized").textContent = data.materialized_record_count ?? "--";
-  $("metric-max-size").textContent = data.max_rows ?? "--";
+  const extents = [data.max_rows, data.max_cols].map(Number).filter(Number.isFinite);
+  $("metric-max-size").textContent = extents.length ? Math.max(...extents) : "--";
 
   const sourceLine = $("source-line");
   if (sourceLine) {

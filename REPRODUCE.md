@@ -10,7 +10,7 @@ the exported PDF.
 - Profiles: poster, stress
 - Records: 2247
 - Materialized records: 328
-- Max rows: 2048
+- Max extent: 2048
 - Benchmark source archive: densematrix-suite-20260601T133240Z-890971a.tar.gz
 - Benchmark source archive SHA256: 34bedc1bbf042d350054527f3d490b3d8f7e81585355e702c3867c2c2865cf24
 
