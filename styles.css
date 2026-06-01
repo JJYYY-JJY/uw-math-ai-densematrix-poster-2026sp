@@ -43,7 +43,7 @@ body {
 
 .topbar {
   display: grid;
-  grid-template-columns: 420px 1fr auto;
+  grid-template-columns: 420px 1fr;
   align-items: center;
   gap: 24px;
   padding: 16px 40px;
@@ -73,7 +73,6 @@ body {
   font-weight: 600;
 }
 
-.status-chip,
 .metric-pill {
   min-width: 154px;
   height: 38px;
@@ -86,18 +85,6 @@ body {
   color: var(--navy);
   font-size: 16px;
   font-weight: 800;
-}
-
-.status-chip.strict {
-  border-color: rgba(4, 132, 75, 0.35);
-  background: rgba(4, 132, 75, 0.1);
-  color: var(--green);
-}
-
-.status-chip.sample {
-  border-color: rgba(255, 154, 60, 0.45);
-  background: rgba(255, 154, 60, 0.12);
-  color: #995300;
 }
 
 .hero {

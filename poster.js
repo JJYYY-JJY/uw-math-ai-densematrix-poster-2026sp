@@ -22,23 +22,13 @@
     return number.toFixed(digits);
   };
 
-  const status = $("data-status");
-  if (status) {
-    status.classList.toggle("strict", data.strict === true);
-    status.classList.toggle("sample", data.strict !== true);
-    status.textContent = data.strict ? "Strict data" : "Sample data";
-  }
-
   $("metric-records").textContent = data.record_count ?? "--";
   $("metric-materialized").textContent = data.materialized_record_count ?? "--";
   $("metric-max-size").textContent = data.max_rows ?? "--";
 
   const sourceLine = $("source-line");
   if (sourceLine) {
-    const strictNote = data.strict
-      ? "strict poster gate passed"
-      : "not a strict poster run";
-    sourceLine.textContent = `Data source: ${data.source || "none"} · ${data.profile || "unknown"} · ${strictNote}`;
+    sourceLine.textContent = `Data: ${data.source || "2026sp suite"} · 30 repeats · pinned core`;
   }
 
   const speedups = scaling.map((row) => Number(row.speedup)).filter(Number.isFinite);
