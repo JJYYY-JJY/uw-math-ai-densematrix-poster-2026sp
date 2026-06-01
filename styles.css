@@ -142,13 +142,21 @@ h1 {
 
 .authors {
   align-self: end;
-  padding: 18px 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
-  font-size: 20px;
-  line-height: 1.32;
+  font-size: 19px;
+  line-height: 1.28;
   font-weight: 700;
+}
+
+.authors-copy {
+  min-width: 0;
 }
 
 .authors-label {
@@ -165,6 +173,29 @@ h1 {
   color: rgba(255, 255, 255, 0.74);
   font-size: 18px;
   font-weight: 600;
+}
+
+.poster-qr {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 11px;
+  line-height: 1.05;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.poster-qr img {
+  width: 104px;
+  height: 104px;
+  padding: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 6px;
+  background: var(--white);
 }
 
 .dashboard-grid {

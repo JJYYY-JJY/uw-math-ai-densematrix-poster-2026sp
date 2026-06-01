@@ -33,4 +33,5 @@ scripts/export_densematrix_public_artifact.mjs --suite bench-results/2026sp/dens
 - `densematrix-poster-2026sp.pdf`: exported 16:9 PDF.
 - `data/poster-data.json`: redacted summary data used by the poster.
 - `data/poster-data.js`: browser-ready wrapper for the same data.
+- `assets/public-artifact-qr.svg`: QR code for the public artifact URL.
 - `SHA256SUMS`: integrity hashes for this public export.
