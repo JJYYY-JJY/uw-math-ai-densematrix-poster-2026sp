@@ -126,19 +126,19 @@
       return;
     }
     host.innerHTML = [
-      '<div class="tradeoff-row"><span>operation</span><span>Dense</span><span>Matrix</span><span>Matrix→Dense</span><span>winner</span></div>',
+      '<div class="tradeoff-row"><span>operation</span><span>Dense</span><span>Matrix</span><span>Matrix→Dense</span><span>fastest</span></div>',
       ...rows.map((row) => {
         const dense = Number(row.dense_ms);
         const matrix = Number(row.matrix_ms);
         const materialized = Number(row.materialized_ms);
         const min = Math.min(dense, matrix, materialized);
-        const winner = min === dense ? "Dense" : min === matrix ? "Matrix" : "M→D";
+        const fastest = min === dense ? "Dense" : min === matrix ? "Matrix" : "M→D";
         return `<div class="tradeoff-row">
           <strong>${escapeXml(row.label)}</strong>
           <span>${fmt(dense, 2)}</span>
           <span>${fmt(matrix, 2)}</span>
           <span>${fmt(materialized, 2)}</span>
-          <span>${winner}</span>
+          <span>${fastest}</span>
         </div>`;
       }),
     ].join("");
