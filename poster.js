@@ -21,6 +21,13 @@
     }
     return number.toFixed(digits);
   };
+  const fmtInteger = (value) => {
+    const number = Number(value);
+    if (!Number.isFinite(number)) {
+      return "--";
+    }
+    return Math.round(number).toLocaleString("en-US");
+  };
 
   $("metric-records").textContent = data.record_count ?? "--";
   $("metric-materialized").textContent = data.materialized_record_count ?? "--";
@@ -156,7 +163,7 @@
     host.innerHTML = rows
       .map((row) => `<div class="algorithm-row">
         <strong title="${escapeXml(row.operation)}">${escapeXml(algorithmLabel(row.operation))}</strong>
-        <span>${fmt(row.median_ms, 2)} ms</span>
+        <span>${fmtInteger(row.median_ms)} ms</span>
       </div>`)
       .join("");
   }
