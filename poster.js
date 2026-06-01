@@ -111,7 +111,6 @@
       <line x1="${margin.left}" y1="${margin.top + plotHeight}" x2="${width - margin.right}" y2="${margin.top + plotHeight}" stroke="#D8DDE6" stroke-width="2" />
       <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + plotHeight}" stroke="#D8DDE6" stroke-width="2" />
       <text x="${margin.left}" y="16" font-size="15" font-weight="800" fill="#706E6B">median ms</text>
-      <text x="${width - margin.right}" y="16" text-anchor="end" font-size="15" font-weight="800" fill="#706E6B">rows</text>
       ${paths}
       ${xLabels}
     </svg>`;
