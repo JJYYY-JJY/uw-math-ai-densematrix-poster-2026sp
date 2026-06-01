@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DenseMatrix Poster, UW 2026 Spring</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="poster">
+      <header class="topbar">
+        <img
+          class="uw-signature"
+          src="./assets/uw-signature-left-purple.png"
+          alt="University of Washington"
+        />
+        <div class="lab-block">
+          <div class="lab-title">UW Math AI Lab</div>
+          <div class="lab-meta">Spring 2026 · Provable Computation</div>
+        </div>
+        <div id="data-status" class="status-chip">Data pending</div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Verified executable linear algebra</p>
+          <h1>DenseMatrix makes Lean matrix algorithms run like data.</h1>
+          <p class="subtitle">
+            Row-major data for RREF, LU, and determinant kernels, bridged back
+            to proof-friendly `Matrix` theorems.
+          </p>
+        </div>
+        <div class="authors">
+          <div class="authors-label">Poster team</div>
+          <div>Annis Wu · Joseph Qian · Junye Ji · Veer Shukla</div>
+          <div class="mentor">Mentor: Dhruv Bhatia</div>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="panel claim-panel">
+          <h2>Backend Claim</h2>
+          <p>
+            DenseMatrix stores entries in row-major arrays, so matrix code can
+            execute over contiguous data instead of repeatedly re-evaluating
+            pointwise functions.
+          </p>
+          <div class="pipeline" aria-label="DenseMatrix proof and execution pipeline">
+            <div class="pipe-node">Matrix API</div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-node accent">DenseMatrix.ofMatrix</div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-node">Row-major kernels</div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-node success">toMatrix theorems</div>
+          </div>
+          <div class="callout">
+            Measures materialized executable workloads, not every `Matrix`
+            expression.
+          </div>
+        </article>
+
+        <article class="panel chart-panel">
+          <div class="section-head">
+            <div>
+              <h2>Multiplication Scaling</h2>
+              <p>DenseMatrix vs Matrix→Dense, median ms on a log scale.</p>
+            </div>
+            <div id="speedup-range" class="metric-pill">--x</div>
+          </div>
+          <div id="comparison-chart" class="chart-shell"></div>
+          <div class="legend">
+            <span><i class="legend-square-dense"></i> Square DenseMatrix</span>
+            <span><i class="legend-square-materialized"></i> Square Matrix→Dense</span>
+            <span><i class="legend-rect-dense"></i> Rect DenseMatrix</span>
+            <span><i class="legend-rect-materialized"></i> Rect Matrix→Dense</span>
+          </div>
+        </article>
+
+        <article class="panel metrics-panel">
+          <h2>Run Gate</h2>
+          <div class="metric-list">
+            <div>
+              <span class="metric-number" id="metric-records">--</span>
+              <span class="metric-label">records</span>
+            </div>
+            <div>
+              <span class="metric-number" id="metric-materialized">--</span>
+              <span class="metric-label">materialized rows</span>
+            </div>
+            <div>
+              <span class="metric-number" id="metric-max-size">--</span>
+              <span class="metric-label">max rows</span>
+            </div>
+          </div>
+          <table class="protocol-table">
+            <tbody>
+              <tr><th>Poster gate</th><td>30 repeats · 5 warmups</td></tr>
+              <tr><th>Sizes</th><td>16, 32, 64, 96, 128, 192, 256</td></tr>
+              <tr><th>Stress</th><td>384, 512, 768, 1024</td></tr>
+              <tr><th>Machine</th><td>pinned core · environment archived</td></tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="panel theorem-panel">
+          <h2>Proof Surface</h2>
+          <div class="theorem-grid">
+            <code>DenseMatrix.toMatrix_add</code>
+            <code>DenseMatrix.toMatrix_mul</code>
+            <code>rowEchelonForm_toMatrix</code>
+            <code>luDet_eq_det</code>
+            <code>gaussDet_eq_det</code>
+          </div>
+          <p>
+            Executable backend results stay connected to the mathematical API by
+            theorem anchors.
+          </p>
+        </article>
+
+        <article class="panel algorithms-panel">
+          <div class="section-head">
+            <div>
+              <h2>Algorithm Evidence</h2>
+              <p>Dense prebuilt Rat workloads, when available.</p>
+            </div>
+          </div>
+          <div id="algorithm-table" class="algorithm-table"></div>
+        </article>
+
+        <article class="panel export-panel">
+          <h2>Representation Tradeoff</h2>
+          <p>Pointwise primitives at the largest complete size.</p>
+          <div id="tradeoff-table" class="tradeoff-table"></div>
+          <pre><code>scripts/build_densematrix_poster_data.mjs --input bench-results/2026sp/&lt;suite&gt;.tar.gz
+scripts/export_densematrix_poster_pdf.sh</code></pre>
+        </article>
+      </section>
+
+      <footer class="footer">
+        <span id="source-line">No benchmark bundle loaded.</span>
+        <span>Private source, public artifact split: PDF · HTML · charts · verified benchmark bundles.</span>
+      </footer>
+    </main>
+
+    <script src="./data/poster-data.js"></script>
+    <script src="./poster.js"></script>
+  </body>
+</html>
