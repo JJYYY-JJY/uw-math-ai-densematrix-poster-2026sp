@@ -444,7 +444,7 @@ pre {
 
 .algorithm-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 58px 92px;
+  grid-template-columns: minmax(0, 1fr) 92px;
   gap: 10px;
   align-items: center;
   min-height: 38px;
@@ -463,6 +463,10 @@ pre {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.algorithm-row span {
+  justify-self: end;
 }
 
 .tradeoff-table {

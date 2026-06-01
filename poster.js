@@ -156,7 +156,6 @@
     host.innerHTML = rows
       .map((row) => `<div class="algorithm-row">
         <strong title="${escapeXml(row.operation)}">${escapeXml(algorithmLabel(row.operation))}</strong>
-        <span>n=${escapeXml(String(row.rows))}</span>
         <span>${fmt(row.median_ms, 2)} ms</span>
       </div>`)
       .join("");
