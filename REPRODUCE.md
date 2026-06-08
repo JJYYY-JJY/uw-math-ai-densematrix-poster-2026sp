@@ -9,7 +9,7 @@ site-data JSON file, and the full extracted benchmark bundle from
 
 - Bundle: `densematrix-benchmark-bundle-20260605/`
 - Bundle input SHA256: `f731578bbaaddc45fae5d9beb534789070beb9ec14a403a984aee62c88488ad1`
-- Poster PDF SHA256: `ab80f850be67aedaab7e8c3863d1662c1ba90479216f3979590d43172a0c5b35`
+- Poster PDF SHA256: `b0b398673dcf0ea146bce6958ac9d83e7fe8dbc0707d99c474f7cc087abba037`
 - Benchmark git revision: `b8ddab453721eac7f4cc3b761ce6b79e0d37e1ac`
 - Records: 266
 - Measured samples: 13,300
