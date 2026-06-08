@@ -1,0 +1,1 @@
+$ taskset -c 3 lake exe densematrix_bench --sizes 4\,8\,16\,24\,32\,48\,64\,80\,96\,128\,160\,192\,256\,384\,512\,768\,1024\,1536\,2048 --warmups 10 --repeats 50 --skip-existing --jsonl bench-results/densematrix-48h/results.jsonl

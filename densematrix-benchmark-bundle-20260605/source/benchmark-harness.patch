@@ -1,0 +1,2562 @@
+diff --git a/.gitignore b/.gitignore
+index 5b1b1f7..19b49be 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,2 +1,5 @@
+ /.lake
++bench-results/
++__pycache__/
++*.pyc
+ .DS_Store
+diff --git a/lakefile.toml b/lakefile.toml
+index 1bf4e30..61ca1ef 100644
+--- a/lakefile.toml
++++ b/lakefile.toml
+@@ -20,3 +20,7 @@ name = "ProvableComputation"
+ 
+ [[lean_lib]]
+ name = "TEST"
++
++[[lean_exe]]
++name = "densematrix_bench"
++root = "ProvableComputation.Bench.DenseMatrixRunner"
+
+diff --git a/ProvableComputation/LinearAlgebra/DenseMatrix/Defs.lean b/ProvableComputation/LinearAlgebra/DenseMatrix/Defs.lean
+new file mode 100644
+index 0000000..011e6ef
+--- /dev/null
++++ b/ProvableComputation/LinearAlgebra/DenseMatrix/Defs.lean
+@@ -0,0 +1,345 @@
++import Mathlib.Data.Matrix.Basic
++
++/-!
++# Dense matrix basics
++
++This file contains only the minimal Vector-backed representation for dense
++matrices and the bridge to mathlib's function-backed `Matrix` type.
++
++The dimensions are tracked by the storage type itself: a value of
++`DenseMatrix m n α` stores exactly `m * n` entries in one `Vector α (m * n)`.
++Entries are flattened in row-major order, so row `i`, column `j` lives at offset
++`i * n + j`.
++-/
++
++-- The universe parameter keeps `DenseMatrix` polymorphic over element types.
++universe u
++
++/--
++Row-major matrix with dimensions tracked in the type.
++
++The raw storage is the `data` field. Its `Vector` length is the representation
++invariant, so callers index by `Fin m` and `Fin n` rather than by unchecked
++natural-number offsets.
++-/
++structure DenseMatrix (m n : Nat) (α : Type u) where
++  data : Vector α (m * n)
++deriving Repr
++
++-- All operations and helper lemmas for dense matrices live under this namespace.
++namespace DenseMatrix
++
++/--
++Row-major offset for an entry of an `m` by `n` dense matrix.
++
++For row `i` and column `j`, all entries in earlier rows contribute `i.val * n`
++slots, and `j.val` selects the slot inside the current row. The companion
++theorem `rowMajorIndex_lt` proves that this offset is inside the storage
++interval `[0, m * n)`.
++-/
++def rowMajorIndex {m n : Nat} (i : Fin m) (j : Fin n) : Nat :=
++  i.val * n + j.val
++
++/--
++The row-major offset is always a valid index into the flat storage vector.
++
++The proof bounds `j` by the width `n`, rewrites the next row boundary as
++`(i.val + 1) * n`, then uses `i.isLt` to stay below `m * n`.
++-/
++theorem rowMajorIndex_lt {m n : Nat} (i : Fin m) (j : Fin n) :
++    rowMajorIndex i j < m * n := by
++  unfold rowMajorIndex
++  calc
++    i.val * n + j.val < i.val * n + n := Nat.add_lt_add_left j.isLt (i.val * n)
++    _ = (i.val + 1) * n := by rw [Nat.succ_mul]
++    _ ≤ m * n := Nat.mul_le_mul_right n (Nat.succ_le_iff.mpr i.isLt)
++
++/--
++Unchecked row-major fast-path read.
++
++The row and column are natural numbers, not typed `Fin` indices. This function
++does not prove that `i < m`, `j < n`, or `i * n + j < m * n`; callers are
++responsible for those bounds when they want matrix semantics. Prefer `get` when
++typed indices are available.
++-/
++@[inline]
++def get! {m n : Nat} {α : Type u} [Inhabited α] (M : DenseMatrix m n α) (i j : Nat) : α :=
++  M.data[i * n + j]!
++
++/--
++Unchecked row-major fast-path update.
++
++The row and column are natural numbers, not typed `Fin` indices. This function
++computes the row-major offset `i * n + j` without carrying a bounds proof, so
++callers are responsible for ensuring the offset is inside the backing vector.
++Prefer `set` when typed indices are available.
++-/
++@[inline]
++def set! {m n : Nat} {α : Type u} [Inhabited α] (M : DenseMatrix m n α) (i j : Nat) (val : α)
++    : DenseMatrix m n α where
++  data := M.data.set! (i * n + j) val
++
++/--
++Read an entry using checked row-major indexing.
++
++The value-level index is computed by `rowMajorIndex`; the paired proof
++`rowMajorIndex_lt` turns that offset into a `Fin (m * n)`. Thus `get` has no
++unchecked fallback and no default value.
++-/
++@[inline]
++def get {m n : Nat} {α : Type u} (A : DenseMatrix m n α) (i : Fin m) (j : Fin n) : α :=
++  A.data.get ⟨rowMajorIndex i j, rowMajorIndex_lt i j⟩
++
++/--
++Return a matrix with one entry updated.
++
++The update uses the same checked row-major offset as `get`; the `Vector` result
++keeps the same length by construction.
++-/
++@[inline]
++def set {m n : Nat} {α : Type u} (A : DenseMatrix m n α) (i : Fin m) (j : Fin n) (x : α) :
++    DenseMatrix m n α where
++  data := A.data.set (rowMajorIndex i j) x (rowMajorIndex_lt i j)
++
++instance {m n : Nat} {α : Type u} [Inhabited α] [ToString α] : ToString (DenseMatrix m n α) where
++  toString A := Id.run do
++    let mut rows : Array String := #[]
++    for i in [0:m] do
++      let mut rowStr : Array String := #[]
++      for j in [0:n] do
++        -- Access the element using your existing `get!` function
++        let val := A.get! i j
++        rowStr := rowStr.push (toString val)
++
++      -- Format the current row, e.g., "[1, 2, 3]"
++      let rowFormatted := "![" ++ String.intercalate ", " rowStr.toList ++ "]"
++      rows := rows.push rowFormatted
++
++    -- Join all rows with a newline and a leading space for alignment
++    return "![" ++ String.intercalate ", " rows.toList ++ "]"
++
++/--
++Convert a dense matrix to mathlib's function-backed matrix type.
++
++`Matrix (Fin m) (Fin n) α` is represented extensionally as a function from row
++and column indices to entries. The conversion exposes each dense entry through
++`get`, preserving checked row-major access while hiding the underlying storage.
++-/
++def toMatrix {m n : Nat} {α : Type u} (A : DenseMatrix m n α) :
++    Matrix (Fin m) (Fin n) α :=
++  Matrix.of fun i j => A.get i j
++
++-- Flatten/unflatten arithmetic for row-major storage. Given a flat index
++-- `x < m * n`, division by `n` recovers the row and modulo `n` recovers the
++-- column. The modulo proof first rules out `n = 0`: otherwise `m * n = 0`,
++-- contradicting the existence of such an `x`.
++
++-- The quotient of a flat in-bounds index by the row width is a valid row
++-- index.
++private theorem index_div_lt {m n : Nat} {x : Nat} (h : x < m * n) : x / n < m := by
++  rw [Nat.mul_comm] at h
++  exact Nat.div_lt_of_lt_mul h
++
++-- The remainder of a flat in-bounds index by the row width is a valid column
++-- index.
++private theorem index_mod_lt {m n : Nat} {x : Nat} (h : x < m * n) : x % n < n := by
++  have hn : n ≠ 0 := by
++    intro hn
++    subst n
++    simp at h
++  exact Nat.mod_lt x (Nat.pos_of_ne_zero hn)
++
++-- Flattening the row and column recovered from a flat index returns that index.
++private theorem rowMajorIndex_unflatten {m n : Nat} (x : Fin (m * n)) :
++    rowMajorIndex
++        (m := m) (n := n)
++        ⟨x.val / n, index_div_lt x.isLt⟩
++        ⟨x.val % n, index_mod_lt x.isLt⟩ = x.val := by
++  unfold rowMajorIndex
++  rw [Nat.mul_comm (x.val / n) n, Nat.div_add_mod]
++
++-- When a proof starts from typed indices `i : Fin m` and `j : Fin n`, the
++-- witness `j` proves `n > 0`: `0 <= j.val < n`. That positivity is what lets
++-- the division and modulo simplification lemmas recover `i.val` and `j.val`
++-- from the flattened row-major offset.
++
++-- Dividing a flattened typed row-major index by the row width recovers the
++-- row.
++private theorem rowMajorIndex_div {m n : Nat} (i : Fin m) (j : Fin n) :
++    rowMajorIndex i j / n = i.val := by
++  unfold rowMajorIndex
++  rw [Nat.mul_comm i.val n]
++  have hn : 0 < n := Nat.lt_of_le_of_lt (Nat.zero_le j.val) j.isLt
++  rw [Nat.mul_add_div hn, Nat.div_eq_of_lt j.isLt, Nat.add_zero]
++
++-- Taking a flattened typed row-major index modulo the row width recovers the
++-- column.
++private theorem rowMajorIndex_mod {m n : Nat} (i : Fin m) (j : Fin n) :
++    rowMajorIndex i j % n = j.val := by
++  unfold rowMajorIndex
++  rw [Nat.mul_comm i.val n]
++  rw [Nat.mul_add_mod_self_left, Nat.mod_eq_of_lt j.isLt]
++
++/--
++Convert a function-backed matrix to row-major dense storage.
++
++`Vector.ofFn` enumerates every `x : Fin (m * n)` exactly once. Each flat index
++is unflattened as `(x / n, x % n)`, then the helper lemmas supply the `Fin m`
++and `Fin n` bounds.
++-/
++def ofMatrix {m n : Nat} {α : Type u} (M : Matrix (Fin m) (Fin n) α) :
++    DenseMatrix m n α where
++  data := Vector.ofFn fun x : Fin (m * n) =>
++    M ⟨x.val / n, index_div_lt x.isLt⟩ ⟨x.val % n, index_mod_lt x.isLt⟩
++
++-- Reading a dense matrix built from a function-backed matrix returns the source
++-- entry.
++private theorem get_ofMatrix {m n : Nat} {α : Type u}
++    (M : Matrix (Fin m) (Fin n) α) (i : Fin m) (j : Fin n) :
++    get (ofMatrix M) i j = M i j := by
++  simp [ofMatrix, get, Vector.get, rowMajorIndex_div, rowMajorIndex_mod]
++
++-- Reading storage through the unflattened row and column returns the same flat
++-- slot.
++private theorem get_unflatten {m n : Nat} {α : Type u}
++    (data : Vector α (m * n)) (x : Fin (m * n)) :
++    get { data := data }
++        ⟨x.val / n, index_div_lt x.isLt⟩
++        ⟨x.val % n, index_mod_lt x.isLt⟩ = data.get x := by
++  have hflat :
++      (⟨rowMajorIndex
++          ⟨x.val / n, index_div_lt x.isLt⟩
++          ⟨x.val % n, index_mod_lt x.isLt⟩,
++        rowMajorIndex_lt
++          ⟨x.val / n, index_div_lt x.isLt⟩
++          ⟨x.val % n, index_mod_lt x.isLt⟩⟩ : Fin (m * n)) = x := by
++    apply Fin.ext
++    exact rowMajorIndex_unflatten x
++  simp [get, hflat]
++
++/--
++Round trip from `Matrix` to `DenseMatrix` and back.
++
++The proof is extensional in the row and column indices. After unfolding the two
++conversions, the division and modulo helper lemmas show that reading the
++row-major slot created for `(i, j)` returns exactly `M i j`.
++-/
++@[simp]
++theorem toMatrix_ofMatrix {m n : Nat} {α : Type u} (M : Matrix (Fin m) (Fin n) α) :
++    toMatrix (ofMatrix M) = M := by
++  ext i j
++  exact get_ofMatrix M i j
++
++/--
++Round trip from `DenseMatrix` to `Matrix` and back.
++
++After destructing the dense matrix, it is enough to prove equality of the
++backing vectors pointwise. The `get_unflatten` helper identifies each recreated
++slot with the original flat slot.
++-/
++@[simp]
++theorem ofMatrix_toMatrix {m n : Nat} {α : Type u} (A : DenseMatrix m n α) :
++    ofMatrix (toMatrix A) = A := by
++  cases A with
++  | mk data =>
++    rw [DenseMatrix.mk.injEq]
++    apply Vector.ext
++    intro x hx
++    simp [ofMatrix, toMatrix, get_unflatten, Vector.get]
++
++/-- Define a `DenseMatrix` using a function. -/
++def of {m n : Nat} {α : Type u} (f : Fin m → Fin n → α) : DenseMatrix m n α :=
++  .ofMatrix (Matrix.of f)
++
++def add {m n : Nat} {α : Type u} [Add α] (A B : DenseMatrix m n α) : DenseMatrix m n α where
++  data := A.data.zipWith (· + ·) B.data
++
++def smul {m n : Nat} {α : Type u} [Mul α] (c : α) (M : DenseMatrix m n α) : DenseMatrix m n α where
++  data := M.data.map (fun x => c * x)
++
++private def dot {m k n : Nat} {α : Type u} [Add α] [Mul α]
++    (sum : α) (i : Fin m) (j : Fin n) (l : Fin k)
++    (A : DenseMatrix m k α) (B : DenseMatrix k n α) : α :=
++  if h: l + 1 < k then
++    dot (sum + (A.get i l * B.get l j)) i j ⟨l+1, by simp [h]⟩ A B
++  else
++    sum + (A.get i l * B.get l j)
++
++/-- If `i * n + j = out.size` and `j + 1 = n` then `(i + 1) * n = (out.push entry).size`. -/
++private lemma row_size_invariant {α : Type u} (out : Array α) (i j n : Nat)
++    (h_size : out.size = i * n + j) (hj : j + 1 = n) (entry : α)
++    : (out.push entry).size = (i + 1) * n := by
++  simp only [Array.size_push, h_size]
++  suffices j + 1 = n from by grind
++  exact hj
++
++/-- The last `Array α` returned by `mul_helper` has size `m * n`. -/
++private lemma mul_helper_size_invariant {m n : Nat} {α : Type u} (out : Array α) (i j : Nat)
++    (h_size : out.size = i * n + j) (hi : i + 1 = m) (hj : j + 1 = n) (entry : α)
++    : (out.push entry).size = m * n := by
++  rw [Array.size_push, h_size, add_assoc, hj]
++  nth_rewrite 2 [←one_mul n]
++  rw [←right_distrib, hi]
++
++/-- Computes entry ij of `A * B` and appends it to the resulting matrix. -/
++private def mul_helper {m k n : Nat} {α : Type u} [Zero α] [Add α] [Mul α]
++    [NeZero m] [NeZero k] [NeZero n]
++    (out : Array α) (i j : Nat) (A : DenseMatrix m k α) (B : DenseMatrix k n α)
++    (h_size : out.size = i * n + j) (hi : m ≥ i + 1) (hj : n ≥ j + 1)
++    : Vector α (m * n) :=
++  let entry := dot 0 ⟨i, by exact Nat.lt_of_succ_le hi⟩ ⟨j, by exact Nat.lt_of_succ_le hj⟩ 0 A B
++  if h₁ : j + 1 < n then
++    mul_helper (out.push entry) i (j+1) A B (by aesop) hi (by exact Nat.succ_le_of_lt h₁)
++  else if h₂ : i + 1 < m then
++    let hj' : j + 1 = n := by apply le_antisymm hj (by push Not at h₁; exact h₁)
++    mul_helper (out.push entry) (i+1) 0 A B
++      (row_size_invariant out i j n h_size hj' entry)
++      (by exact Nat.succ_le_of_lt h₂) NeZero.one_le
++  else
++    let hi' : i + 1 = m := by apply le_antisymm hi (by push Not at h₂; exact h₂)
++    let hj' : j + 1 = n := by apply le_antisymm hj (by push Not at h₁; exact h₁)
++    ⟨out.push entry, mul_helper_size_invariant out i j h_size hi' hj' entry⟩
++
++/--
++Optimized dense matrix multiplication for nonempty dimensions.
++
++This path builds the output storage sequentially and computes each dot product
++with checked dense reads. It requires `[NeZero m] [NeZero k] [NeZero n]` so the
++recursive helper can start at row, column, and dot-product index `0`.
++-/
++def mul {m k n : Nat} {α : Type u} [Inhabited α] [Zero α] [Add α] [Mul α]
++    [NeZero m] [NeZero k] [NeZero n]
++    (A : DenseMatrix m k α) (B : DenseMatrix k n α) : DenseMatrix m n α where
++  data := mul_helper (Array.mkEmpty (m * n)) 0 0 A B (by simp) NeZero.one_le NeZero.one_le
++
++/-- The last `Array α` returned by `transpose_helper` has size `n * m`. -/
++private lemma transpose_helper_size_invariant {m n : Nat} {α : Type u} (out : Array α) (i j : Nat)
++    (h_size : out.size = j * m + i) (hi : i + 1 = m) (hj : j + 1 = n) (entry : α)
++    : (out.push entry).size = n * m := by
++  rw [Array.size_push, h_size, add_assoc, hi]
++  nth_rewrite 2 [←one_mul m]
++  rw [←right_distrib, hj]
++
++/-- Computes entry `ij` of M.T and appends it to the resulting matrix. -/
++private def transpose_helper {m n : Nat} {α : Type u} [NeZero m] [NeZero n]
++    (out : Array α) (i j : Nat) (M : DenseMatrix m n α)
++    (h_size : out.size = j * m + i) (hi : m ≥ i + 1) (hj : n ≥ j + 1)
++    :  Vector α (n * m) :=
++  let entry := M.get ⟨i, by exact Nat.lt_of_succ_le hi⟩ ⟨j, by exact Nat.lt_of_succ_le hj⟩
++  if h₁ : i + 1 < m then
++    transpose_helper (out.push entry) (i+1) j M (by aesop) (by exact Nat.succ_le_of_lt h₁) hj
++  else if h₂ : j + 1 < n then
++    let hj' : i + 1 = m := by apply le_antisymm hi (by push Not at h₁; exact h₁)
++    transpose_helper (out.push entry) 0 (j+1) M
++      (row_size_invariant out j i m h_size hj' entry)
++      NeZero.one_le (by exact Nat.succ_le_of_lt h₂)
++  else
++    let hi' : i + 1 = m := by apply le_antisymm hi (by push Not at h₁; exact h₁)
++    let hj' : j + 1 = n := by apply le_antisymm hj (by push Not at h₂; exact h₂)
++    ⟨out.push entry, transpose_helper_size_invariant out i j h_size hi' hj' entry⟩
++
++def transpose {m n : Nat} {α : Type u} [NeZero m] [NeZero n]
++    (M : DenseMatrix m n α) : DenseMatrix n m α :=
++  { data := transpose_helper (Array.mkEmpty (n * m)) 0 0 M (by simp) NeZero.one_le NeZero.one_le }
++
++end DenseMatrix
+
+diff --git a/ProvableComputation/Bench/DenseMatrixBench.lean b/ProvableComputation/Bench/DenseMatrixBench.lean
+new file mode 100644
+index 0000000..c531cb0
+--- /dev/null
++++ b/ProvableComputation/Bench/DenseMatrixBench.lean
+@@ -0,0 +1,480 @@
++import ProvableComputation.LinearAlgebra.DenseMatrix.Defs
++import Lean.Data.Json
++
++/-!
++# DenseMatrix benchmark harness
++
++This module is intentionally outside the public library import surface.  It
++provides deterministic inputs, checksum-based full-output evaluation, and a
++small JSONL runner for comparing compiled `DenseMatrix` kernels against
++function-backed mathlib `Matrix` expressions.
++-/
++
++namespace DenseMatrixBench
++
++open Lean System
++
++def mixNat (acc x : Nat) : Nat :=
++  (acc * 16777619 + x + 1) % 2147483647
++
++def natCode (x : Nat) : Nat :=
++  x
++
++def intCode (x : Int) : Nat :=
++  x.natAbs * 2 + if x < 0 then 1 else 0
++
++def natEntry (seed i j : Nat) : Nat :=
++  ((seed + (i + 1) * 73 + (j + 1) * 193 + i * j * 17) % 997) + 1
++
++def intEntry (seed i j : Nat) : Int :=
++  Int.ofNat ((seed + (i + 1) * 97 + (j + 1) * 53 + i * j * 29) % 401) - 200
++
++def matrixNat (m n seed : Nat) : Matrix (Fin m) (Fin n) Nat :=
++  Matrix.of fun i j => natEntry seed i.val j.val
++
++def matrixInt (m n seed : Nat) : Matrix (Fin m) (Fin n) Int :=
++  Matrix.of fun i j => intEntry seed i.val j.val
++
++def denseNat (m n seed : Nat) : DenseMatrix m n Nat :=
++  DenseMatrix.of fun i j => natEntry seed i.val j.val
++
++def denseInt (m n seed : Nat) : DenseMatrix m n Int :=
++  DenseMatrix.of fun i j => intEntry seed i.val j.val
++
++def checksumDenseUnchecked {m n : Nat} {α : Type} [Inhabited α]
++    (encode : α → Nat) (A : DenseMatrix m n α) : Nat :=
++  Id.run do
++    let mut acc := 2166136261
++    for i in [0:m] do
++      for j in [0:n] do
++        acc := mixNat acc (encode (A.get! i j))
++    return acc
++
++def checksumDenseChecked {m n : Nat} {α : Type}
++    (encode : α → Nat) (A : DenseMatrix m n α) : Nat :=
++  Id.run do
++    let mut acc := 2166136261
++    for i in List.finRange m do
++      for j in List.finRange n do
++        acc := mixNat acc (encode (A.get i j))
++    return acc
++
++def checksumMatrix {m n : Nat} {α : Type}
++    (encode : α → Nat) (A : Matrix (Fin m) (Fin n) α) : Nat :=
++  Id.run do
++    let mut acc := 2166136261
++    for i in List.finRange m do
++      for j in List.finRange n do
++        acc := mixNat acc (encode (A i j))
++    return acc
++
++def runDenseConstructNat (n : Nat) : Nat :=
++  checksumDenseUnchecked natCode (denseNat n n 11)
++
++def runMatrixConstructNat (n : Nat) : Nat :=
++  checksumMatrix natCode (matrixNat n n 11)
++
++def runDenseOfMatrixNat (n : Nat) : Nat :=
++  checksumDenseUnchecked natCode (DenseMatrix.ofMatrix (matrixNat n n 13))
++
++def runDenseToMatrixNat (n : Nat) : Nat :=
++  checksumMatrix natCode (DenseMatrix.toMatrix (denseNat n n 17))
++
++def runDenseGetNatFrom {m n : Nat} (A : DenseMatrix m n Nat) : Nat :=
++  checksumDenseChecked natCode A
++
++def runMatrixGetNatFrom {m n : Nat} (A : Matrix (Fin m) (Fin n) Nat) : Nat :=
++  checksumMatrix natCode A
++
++def runDenseAddIntFrom {m n : Nat} (A B : DenseMatrix m n Int) : Nat :=
++  checksumDenseUnchecked intCode (DenseMatrix.add A B)
++
++def runMatrixAddIntFrom {m n : Nat} (A B : Matrix (Fin m) (Fin n) Int) : Nat :=
++  checksumMatrix intCode (A + B)
++
++def runDenseSmulIntFrom {m n : Nat} (A : DenseMatrix m n Int) : Nat :=
++  checksumDenseUnchecked intCode (DenseMatrix.smul (-7 : Int) A)
++
++def runMatrixSmulIntFrom {m n : Nat} (A : Matrix (Fin m) (Fin n) Int) : Nat :=
++  checksumMatrix intCode (Matrix.of fun i j => (-7 : Int) * A i j)
++
++def runDenseTransposeIntFrom {m n : Nat} (A : DenseMatrix m n Int) : Nat :=
++  if hm : m = 0 then
++    0
++  else if hn : n = 0 then
++    0
++  else
++    haveI : NeZero m := ⟨hm⟩
++    haveI : NeZero n := ⟨hn⟩
++    checksumDenseUnchecked intCode (DenseMatrix.transpose A)
++
++def runMatrixTransposeIntFrom {m n : Nat} (A : Matrix (Fin m) (Fin n) Int) : Nat :=
++  checksumMatrix intCode A.transpose
++
++def runDenseMulNatFrom {m k n : Nat} (A : DenseMatrix m k Nat) (B : DenseMatrix k n Nat) :
++    Nat :=
++  if hm : m = 0 then
++    0
++  else if hk : k = 0 then
++    0
++  else if hn : n = 0 then
++    0
++  else
++    haveI : NeZero m := ⟨hm⟩
++    haveI : NeZero k := ⟨hk⟩
++    haveI : NeZero n := ⟨hn⟩
++    checksumDenseUnchecked natCode (DenseMatrix.mul A B)
++
++def runMatrixMulNatFrom {m k n : Nat}
++    (A : Matrix (Fin m) (Fin k) Nat) (B : Matrix (Fin k) (Fin n) Nat) : Nat :=
++  checksumMatrix natCode (A * B)
++
++structure Stats where
++  count : Nat
++  minMs : Float
++  medianMs : Float
++  meanMs : Float
++  p95Ms : Float
++  maxMs : Float
++  stddevMs : Float
++  cv : Float
++
++def summarize (samples : Array Nat) : Stats :=
++  if samples.isEmpty then
++    { count := 0
++      minMs := 0.0
++      medianMs := 0.0
++      meanMs := 0.0
++      p95Ms := 0.0
++      maxMs := 0.0
++      stddevMs := 0.0
++      cv := 0.0 }
++  else
++    let ms := samples.map fun n => n.toFloat / 1000000.0
++    let sorted := ms.qsort (fun a b => a < b)
++    let count := samples.size
++    let percentileIndex (pct : Nat) : Nat :=
++      let idx := (count * pct) / 100
++      if idx < count then idx else count - 1
++    let sum := ms.foldl (fun acc x => acc + x) 0.0
++    let mean := sum / count.toFloat
++    let variance := ms.foldl (fun acc x =>
++      let delta := x - mean
++      acc + delta * delta) 0.0 / count.toFloat
++    let stddev := Float.sqrt variance
++    { count := count
++      minMs := sorted[0]!
++      medianMs := sorted[count / 2]!
++      meanMs := mean
++      p95Ms := sorted[percentileIndex 95]!
++      maxMs := sorted[count - 1]!
++      stddevMs := stddev
++      cv := if mean == 0.0 then 0.0 else stddev / mean }
++
++structure Config where
++  quick : Bool := false
++  repeatsOpt : Option Nat := none
++  warmupsOpt : Option Nat := none
++  sizesOpt : Option (List Nat) := none
++  jsonl : Option String := none
++  append : Bool := false
++  skipExisting : Bool := false
++  quiet : Bool := false
++  showHelp : Bool := false
++
++def defaultSizes (quick : Bool) : List Nat :=
++  if quick then [4, 8] else [4, 8, 16, 24, 32, 48, 64, 80, 96]
++
++def effectiveRepeats (cfg : Config) : Nat :=
++  cfg.repeatsOpt.getD (if cfg.quick then 3 else 30)
++
++def effectiveWarmups (cfg : Config) : Nat :=
++  cfg.warmupsOpt.getD (if cfg.quick then 1 else 5)
++
++def effectiveSizes (cfg : Config) : List Nat :=
++  cfg.sizesOpt.getD (defaultSizes cfg.quick)
++
++def trimString (s : String) : String :=
++  s.trimAscii.toString
++
++def parseNatArg (flag value : String) : Except String Nat :=
++  match (trimString value).toNat? with
++  | some n => .ok n
++  | none => .error s!"{flag} expects a natural number, got '{value}'"
++
++def parseNatList (value : String) : Except String (List Nat) :=
++  let parts := value.splitOn ","
++  let rec go : List String → List Nat → Except String (List Nat)
++    | [], acc => .ok acc.reverse
++    | part :: rest, acc =>
++        let trimmed := trimString part
++        if trimmed.isEmpty then
++          .error s!"--sizes contains an empty entry: '{value}'"
++        else
++          match trimmed.toNat? with
++          | some n => go rest (n :: acc)
++          | none => .error s!"--sizes expects comma-separated natural numbers, got '{part}'"
++  go parts []
++
++partial def parseArgsAux : List String → Config → Except String Config
++  | [], cfg => .ok cfg
++  | "--help" :: _, cfg => .ok { cfg with showHelp := true }
++  | "-h" :: _, cfg => .ok { cfg with showHelp := true }
++  | "--quick" :: rest, cfg => parseArgsAux rest { cfg with quick := true }
++  | "--repeats" :: value :: rest, cfg => do
++      parseArgsAux rest { cfg with repeatsOpt := some (← parseNatArg "--repeats" value) }
++  | "--repeats" :: [], _ => .error "--repeats requires a value"
++  | "--warmups" :: value :: rest, cfg => do
++      parseArgsAux rest { cfg with warmupsOpt := some (← parseNatArg "--warmups" value) }
++  | "--warmups" :: [], _ => .error "--warmups requires a value"
++  | "--sizes" :: value :: rest, cfg => do
++      parseArgsAux rest { cfg with sizesOpt := some (← parseNatList value) }
++  | "--sizes" :: [], _ => .error "--sizes requires a comma-separated value"
++  | "--jsonl" :: value :: rest, cfg =>
++      parseArgsAux rest { cfg with jsonl := some value }
++  | "--jsonl" :: [], _ => .error "--jsonl requires a path or '-'"
++  | "--append" :: rest, cfg => parseArgsAux rest { cfg with append := true }
++  | "--skip-existing" :: rest, cfg =>
++      parseArgsAux rest { cfg with skipExisting := true, append := true }
++  | "--quiet" :: rest, cfg => parseArgsAux rest { cfg with quiet := true }
++  | arg :: _, _ => .error s!"unknown argument '{arg}'"
++
++def parseArgs (args : List String) : Except String Config :=
++  parseArgsAux args {}
++
++def usage : String :=
++  String.intercalate "\n" [
++    "Usage: lake exe densematrix_bench [options]",
++    "",
++    "Options:",
++    "  --quick              Use sizes 4,8 and short repeats.",
++    "  --repeats N          Number of measured repeats.",
++    "  --warmups N          Number of warmup runs.",
++    "  --sizes A,B,C        Square matrix sizes.",
++    "  --jsonl PATH         Write JSONL output to PATH; '-' means stdout.",
++    "  --append             Append JSONL records instead of overwriting PATH.",
++    "  --skip-existing      Resume by skipping records already present in PATH.",
++    "  --quiet              Suppress progress messages on stderr.",
++    "  --help               Show this help."
++  ]
++
++def recordKeyParts (backend operation element setupPolicy : String)
++    (rows cols inner warmups repeats : Nat) : String :=
++  String.intercalate "|" [
++    backend,
++    operation,
++    element,
++    setupPolicy,
++    toString rows,
++    toString cols,
++    toString inner,
++    toString warmups,
++    toString repeats
++  ]
++
++def recordKey (cfg : Config) (backend operation element setupPolicy : String)
++    (rows cols inner : Nat) : String :=
++  recordKeyParts backend operation element setupPolicy rows cols inner
++    (effectiveWarmups cfg) (effectiveRepeats cfg)
++
++def jsonRecordKey? (j : Json) : Except String String := do
++  let backend ← j.getObjValAs? String "backend"
++  let operation ← j.getObjValAs? String "operation"
++  let element ← j.getObjValAs? String "element"
++  let setupPolicy ← j.getObjValAs? String "setup_policy"
++  let rows ← j.getObjValAs? Nat "rows"
++  let cols ← j.getObjValAs? Nat "cols"
++  let inner ← j.getObjValAs? Nat "inner"
++  let warmups ← j.getObjValAs? Nat "warmups"
++  let repeats ← j.getObjValAs? Nat "repeats"
++  return recordKeyParts backend operation element setupPolicy rows cols inner warmups repeats
++
++def loadExistingKeys (cfg : Config) : IO (List String) := do
++  if !cfg.skipExisting then
++    return []
++  match cfg.jsonl with
++  | none => return []
++  | some "-" => return []
++  | some path =>
++      let filePath := FilePath.mk path
++      if !(← filePath.pathExists) then
++        return []
++      let content ← IO.FS.readFile filePath
++      let mut keys : List String := []
++      let mut lineNo := 0
++      for line in content.splitOn "\n" do
++        lineNo := lineNo + 1
++        let trimmed := trimString line
++        if !trimmed.isEmpty then
++          match Json.parse trimmed with
++          | .ok json =>
++              match jsonRecordKey? json with
++              | .ok key => keys := key :: keys
++              | .error err =>
++                  unless cfg.quiet do
++                    IO.eprintln s!"warning: ignoring JSONL line {lineNo}: {err}"
++          | .error err =>
++              unless cfg.quiet do
++                IO.eprintln s!"warning: ignoring unparsable JSONL line {lineNo}: {err}"
++      return keys
++
++def ensureParentDir (path : String) : IO Unit := do
++  match (FilePath.mk path).parent with
++  | none => pure ()
++  | some parent => IO.FS.createDirAll parent
++
++def jsonNatArray (xs : Array Nat) : String :=
++  "[" ++ String.intercalate "," (xs.toList.map fun x => toString x) ++ "]"
++
++def jsonLine (backend operation element setupPolicy : String)
++    (rows cols inner warmups repeats checksum : Nat) (samples : Array Nat) (stats : Stats) :
++    String :=
++  "{" ++
++  s!"\"backend\":\"{backend}\"," ++
++  s!"\"operation\":\"{operation}\"," ++
++  s!"\"element\":\"{element}\"," ++
++  s!"\"setup_policy\":\"{setupPolicy}\"," ++
++  s!"\"rows\":{rows}," ++
++  s!"\"cols\":{cols}," ++
++  s!"\"inner\":{inner}," ++
++  s!"\"warmups\":{warmups}," ++
++  s!"\"repeats\":{repeats}," ++
++  s!"\"checksum\":{checksum}," ++
++  s!"\"samples_unit\":\"ns\"," ++
++  s!"\"samples_ns\":{jsonNatArray samples}," ++
++  s!"\"min_ms\":{stats.minMs}," ++
++  s!"\"median_ms\":{stats.medianMs}," ++
++  s!"\"mean_ms\":{stats.meanMs}," ++
++  s!"\"p95_ms\":{stats.p95Ms}," ++
++  s!"\"max_ms\":{stats.maxMs}," ++
++  s!"\"stddev_ms\":{stats.stddevMs}," ++
++  s!"\"cv\":{stats.cv}" ++
++  "}"
++
++@[noinline]
++def forceNatForTiming (x : Nat) : IO Unit := do
++  if x == 0 then
++    IO.sleep 0
++  else
++    pure ()
++
++def progress (cfg : Config) (msg : String) : IO Unit := do
++  unless cfg.quiet do
++    IO.eprintln msg
++
++def measurePure (cfg : Config) (backend operation element setupPolicy : String)
++    (rows cols inner : Nat) (action : Unit → Nat) : IO String := do
++  let warmups := effectiveWarmups cfg
++  let repeats := effectiveRepeats cfg
++  let label :=
++    s!"{backend}/{operation}/{element}/{setupPolicy} rows={rows} cols={cols} inner={inner}"
++  for i in [0:warmups] do
++    progress cfg s!"progress warmup {i + 1}/{warmups} {label}"
++    forceNatForTiming (mixNat 0 (action ()))
++  let mut samples : Array Nat := #[]
++  let mut checksum := 0
++  for i in [0:repeats] do
++    progress cfg s!"progress repeat {i + 1}/{repeats} {label}"
++    let start ← IO.monoNanosNow
++    let nextChecksum := mixNat checksum (action ())
++    forceNatForTiming nextChecksum
++    let stop ← IO.monoNanosNow
++    checksum := nextChecksum
++    samples := samples.push (stop - start)
++  return jsonLine backend operation element setupPolicy rows cols inner warmups repeats checksum
++    samples (summarize samples)
++
++def runMeasuredRecord (cfg : Config) (emit : String → IO Unit) (existingKeys : List String)
++    (backend operation element setupPolicy : String) (rows cols inner : Nat)
++    (action : Unit → Nat) : IO (List String) := do
++  let key := recordKey cfg backend operation element setupPolicy rows cols inner
++  if existingKeys.any (fun existing => existing == key) then
++    progress cfg s!"skip existing {key}"
++    return existingKeys
++  else
++    progress cfg s!"start {key}"
++    let line ← measurePure cfg backend operation element setupPolicy rows cols inner action
++    emit line
++    progress cfg s!"finish {key}"
++    return key :: existingKeys
++
++def appendSquareBenchmarks (cfg : Config) (emit : String → IO Unit)
++    (existingKeys : List String) (n : Nat) : IO (List String) := do
++  let mut existingKeys := existingKeys
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "dense_core" "construct" "Nat" "setup_inclusive" n n 0
++    (fun _ => runDenseConstructNat n)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "mathlib_matrix" "construct" "Nat" "setup_inclusive" n n 0
++    (fun _ => runMatrixConstructNat n)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "dense_conversion" "ofMatrix" "Nat" "setup_inclusive" n n 0
++    (fun _ => runDenseOfMatrixNat n)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "dense_conversion" "toMatrix" "Nat" "setup_inclusive" n n 0
++    (fun _ => runDenseToMatrixNat n)
++  let denseNatGet := denseNat n n 19
++  let matrixNatGet := matrixNat n n 19
++  let denseIntA := denseInt n n 43
++  let denseIntB := denseInt n n 47
++  let denseIntSmul := denseInt n n 53
++  let matrixIntA := matrixInt n n 43
++  let matrixIntB := matrixInt n n 47
++  let matrixIntSmul := matrixInt n n 53
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "dense_core" "get" "Nat" "prebuilt_inputs" n n 0
++    (fun _ => runDenseGetNatFrom denseNatGet)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "mathlib_matrix" "get" "Nat" "prebuilt_inputs" n n 0
++    (fun _ => runMatrixGetNatFrom matrixNatGet)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "dense_core" "add" "Int" "prebuilt_inputs" n n 0
++    (fun _ => runDenseAddIntFrom denseIntA denseIntB)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "mathlib_matrix" "add" "Int" "prebuilt_inputs" n n 0
++    (fun _ => runMatrixAddIntFrom matrixIntA matrixIntB)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "dense_core" "smul" "Int" "prebuilt_inputs" n n 0
++    (fun _ => runDenseSmulIntFrom denseIntSmul)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "mathlib_matrix" "smul" "Int" "prebuilt_inputs" n n 0
++    (fun _ => runMatrixSmulIntFrom matrixIntSmul)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "dense_core" "transpose" "Int" "prebuilt_inputs" n n 0
++    (fun _ => runDenseTransposeIntFrom denseIntA)
++  existingKeys ← runMeasuredRecord cfg emit existingKeys
++    "mathlib_matrix" "transpose" "Int" "prebuilt_inputs" n n 0
++    (fun _ => runMatrixTransposeIntFrom matrixIntA)
++  if n = 0 then
++    return existingKeys
++  else
++    let denseNatMulA := denseNat n n 61
++    let denseNatMulB := denseNat n n 67
++    let matrixNatMulA := matrixNat n n 61
++    let matrixNatMulB := matrixNat n n 67
++    existingKeys ← runMeasuredRecord cfg emit existingKeys
++      "dense_core" "mul_square" "Nat" "prebuilt_inputs" n n n
++      (fun _ => runDenseMulNatFrom denseNatMulA denseNatMulB)
++    existingKeys ← runMeasuredRecord cfg emit existingKeys
++      "mathlib_matrix" "mul_square" "Nat" "prebuilt_inputs" n n n
++      (fun _ => runMatrixMulNatFrom matrixNatMulA matrixNatMulB)
++    return existingKeys
++
++def runBenchmarksWithEmitter (cfg : Config) (emit : String → IO Unit) : IO Unit := do
++  let mut existingKeys ← loadExistingKeys cfg
++  for n in effectiveSizes cfg do
++    existingKeys ← appendSquareBenchmarks cfg emit existingKeys n
++
++def runBenchmarksStreaming (cfg : Config) : IO Unit := do
++  match cfg.jsonl with
++  | none => runBenchmarksWithEmitter cfg (fun line => IO.println line)
++  | some "-" => runBenchmarksWithEmitter cfg (fun line => IO.println line)
++  | some path =>
++      ensureParentDir path
++      let mode := if cfg.append || cfg.skipExisting then IO.FS.Mode.append else IO.FS.Mode.write
++      let handle ← IO.FS.Handle.mk path mode
++      runBenchmarksWithEmitter cfg (fun line => do
++        handle.putStrLn line
++        handle.flush)
++
++end DenseMatrixBench
+
+diff --git a/ProvableComputation/Bench/DenseMatrixRunner.lean b/ProvableComputation/Bench/DenseMatrixRunner.lean
+new file mode 100644
+index 0000000..a244fbb
+--- /dev/null
++++ b/ProvableComputation/Bench/DenseMatrixRunner.lean
+@@ -0,0 +1,21 @@
++import ProvableComputation.Bench.DenseMatrixBench
++
++/-!
++# DenseMatrix benchmark executable
++
++Lake target root for compiled DenseMatrix benchmarks.
++-/
++
++open DenseMatrixBench
++
++def main (args : List String) : IO Unit := do
++  match parseArgs args with
++  | .error err =>
++      IO.eprintln err
++      IO.eprintln usage
++      IO.Process.exit 2
++  | .ok cfg =>
++      if cfg.showHelp then
++        IO.println usage
++      else
++        runBenchmarksStreaming cfg
+
+diff --git a/bench-tools/run_densematrix_48h.sh b/bench-tools/run_densematrix_48h.sh
+new file mode 100755
+index 0000000..81aea50
+--- /dev/null
++++ b/bench-tools/run_densematrix_48h.sh
+@@ -0,0 +1,169 @@
++#!/usr/bin/env bash
++set -euo pipefail
++
++ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++cd "$ROOT"
++
++OUT_DIR="bench-results/densematrix-48h"
++CORE="3"
++SIZES="4,8,16,24,32,48,64,80,96,128,160,192,256,384,512,768,1024,1536,2048"
++WARMUPS="10"
++REPEATS="50"
++QUIET=0
++
++usage() {
++  cat <<'USAGE'
++Usage: bench-tools/run_densematrix_48h.sh [options]
++
++Runs the single-thread DenseMatrix-vs-mathlib benchmark profile intended for
++poster data collection. Results stream to JSONL and can be resumed safely.
++
++Options:
++  --out-dir DIR     Result directory (default: bench-results/densematrix-48h).
++  --core N          CPU core for taskset pinning (default: 3).
++  --sizes LIST      Comma-separated square sizes.
++  --warmups N       Warmup runs per benchmark record (default: 10).
++  --repeats N       Measured repeats per benchmark record (default: 50).
++  --quiet           Suppress per-repeat progress from the Lean harness.
++  -h, --help        Show this help.
++
++Resume behavior:
++  The runner always uses --skip-existing. If results.jsonl already contains a
++  completed record with the same backend/operation/size/warmups/repeats key,
++  that record is skipped and the remaining records continue.
++USAGE
++}
++
++need_cmd() {
++  command -v "$1" >/dev/null 2>&1 || {
++    echo "missing required command: $1" >&2
++    exit 1
++  }
++}
++
++while [[ $# -gt 0 ]]; do
++  case "$1" in
++    --out-dir)
++      OUT_DIR="${2:?--out-dir requires a value}"
++      shift 2
++      ;;
++    --core)
++      CORE="${2:?--core requires a value}"
++      shift 2
++      ;;
++    --sizes)
++      SIZES="${2:?--sizes requires a value}"
++      shift 2
++      ;;
++    --warmups)
++      WARMUPS="${2:?--warmups requires a value}"
++      shift 2
++      ;;
++    --repeats)
++      REPEATS="${2:?--repeats requires a value}"
++      shift 2
++      ;;
++    --quiet)
++      QUIET=1
++      shift
++      ;;
++    -h|--help)
++      usage
++      exit 0
++      ;;
++    *)
++      echo "unknown argument: $1" >&2
++      usage >&2
++      exit 2
++      ;;
++  esac
++done
++
++[[ "$CORE" =~ ^[0-9]+$ ]] || {
++  echo "--core must be a natural number" >&2
++  exit 2
++}
++[[ "$WARMUPS" =~ ^[0-9]+$ ]] || {
++  echo "--warmups must be a natural number" >&2
++  exit 2
++}
++[[ "$REPEATS" =~ ^[0-9]+$ ]] || {
++  echo "--repeats must be a natural number" >&2
++  exit 2
++}
++
++need_cmd git
++need_cmd lean
++need_cmd lake
++need_cmd taskset
++need_cmd lscpu
++need_cmd date
++
++mkdir -p "$OUT_DIR"
++
++RESULTS="$OUT_DIR/results.jsonl"
++PROGRESS="$OUT_DIR/progress.log"
++
++{
++  echo "repo=$ROOT"
++  echo "out_dir=$OUT_DIR"
++  echo "core=$CORE"
++  echo "sizes=$SIZES"
++  echo "warmups=$WARMUPS"
++  echo "repeats=$REPEATS"
++  echo "results=$RESULTS"
++  echo "progress_log=$PROGRESS"
++} >"$OUT_DIR/run-config.txt"
++
++if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
++  git rev-parse HEAD >"$OUT_DIR/git-rev.txt"
++  git status --short >"$OUT_DIR/git-status.txt"
++  git diff --stat >"$OUT_DIR/git-diff-stat.txt"
++  git diff >"$OUT_DIR/git-diff.patch"
++else
++  echo "not a git checkout; running from source snapshot" >"$OUT_DIR/git-rev.txt"
++  echo "not a git checkout; running from source snapshot" >"$OUT_DIR/git-status.txt"
++  echo "not a git checkout; running from source snapshot" >"$OUT_DIR/git-diff-stat.txt"
++  : >"$OUT_DIR/git-diff.patch"
++fi
++lean --version >"$OUT_DIR/lean-version.txt"
++lake --version >"$OUT_DIR/lake-version.txt"
++lscpu >"$OUT_DIR/lscpu.txt"
++uname -a >"$OUT_DIR/uname.txt"
++date -Is >"$OUT_DIR/start-time.txt"
++
++args=(
++  lake exe densematrix_bench
++  --sizes "$SIZES"
++  --warmups "$WARMUPS"
++  --repeats "$REPEATS"
++  --skip-existing
++  --jsonl "$RESULTS"
++)
++
++if [[ "$QUIET" -eq 1 ]]; then
++  args+=(--quiet)
++fi
++
++{
++  printf '$ taskset -c %q' "$CORE"
++  printf ' %q' "${args[@]}"
++  printf '\n'
++} >"$OUT_DIR/command.txt"
++
++echo "Starting DenseMatrix benchmark. Progress: $PROGRESS" >&2
++set +e
++taskset -c "$CORE" "${args[@]}" 2>>"$PROGRESS"
++status=$?
++set -e
++
++date -Is >"$OUT_DIR/end-time.txt"
++echo "$status" >"$OUT_DIR/exit-status.txt"
++
++if [[ "$status" -ne 0 ]]; then
++  echo "benchmark failed with exit status $status; see $PROGRESS" >&2
++  exit "$status"
++fi
++
++echo "benchmark complete: $RESULTS" >&2
++echo "summarize with: bench-tools/summarize_densematrix_jsonl.py $RESULTS --out-dir $OUT_DIR/summary" >&2
+
+diff --git a/bench-tools/summarize_densematrix_jsonl.py b/bench-tools/summarize_densematrix_jsonl.py
+new file mode 100755
+index 0000000..b43e6e3
+--- /dev/null
++++ b/bench-tools/summarize_densematrix_jsonl.py
+@@ -0,0 +1,257 @@
++#!/usr/bin/env python3
++"""Summarize DenseMatrix benchmark JSONL output.
++
++The script verifies DenseMatrix/mathlib checksum agreement, writes paired
++speedups, and estimates empirical complexity exponents via log-log linear
++regression of median runtime against matrix size.
++"""
++
++from __future__ import annotations
++
++import argparse
++import csv
++import json
++import math
++from collections import defaultdict
++from pathlib import Path
++from statistics import median
++
++
++def read_rows(path: Path) -> list[dict]:
++    rows: list[dict] = []
++    with path.open() as f:
++        for line_no, line in enumerate(f, start=1):
++            line = line.strip()
++            if not line:
++                continue
++            try:
++                rows.append(json.loads(line))
++            except json.JSONDecodeError as exc:
++                raise SystemExit(f"{path}:{line_no}: invalid JSON: {exc}") from exc
++    return rows
++
++
++def pair_key(row: dict) -> tuple:
++    return (
++        row["operation"],
++        row["element"],
++        row["setup_policy"],
++        row["rows"],
++        row["cols"],
++        row["inner"],
++        row["warmups"],
++        row["repeats"],
++    )
++
++
++def complexity_key(row: dict) -> tuple:
++    return (
++        row["backend"],
++        row["operation"],
++        row["element"],
++        row["setup_policy"],
++    )
++
++
++def write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with path.open("w", newline="") as f:
++        writer = csv.DictWriter(f, fieldnames=fieldnames)
++        writer.writeheader()
++        writer.writerows(rows)
++
++
++def linreg_loglog(points: list[tuple[float, float]]) -> dict | None:
++    clean = [(x, y) for x, y in points if x > 0 and y > 0]
++    if len(clean) < 2:
++        return None
++
++    xs = [math.log(x) for x, _ in clean]
++    ys = [math.log(y) for _, y in clean]
++    x_mean = sum(xs) / len(xs)
++    y_mean = sum(ys) / len(ys)
++    ss_xx = sum((x - x_mean) ** 2 for x in xs)
++    if ss_xx == 0:
++        return None
++    ss_xy = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys))
++    slope = ss_xy / ss_xx
++    intercept = y_mean - slope * x_mean
++
++    y_hat = [intercept + slope * x for x in xs]
++    ss_tot = sum((y - y_mean) ** 2 for y in ys)
++    ss_res = sum((y - yh) ** 2 for y, yh in zip(ys, y_hat))
++    r2 = 1.0 if ss_tot == 0 else 1.0 - ss_res / ss_tot
++
++    return {
++        "point_count": len(clean),
++        "min_n": int(min(x for x, _ in clean)),
++        "max_n": int(max(x for x, _ in clean)),
++        "exponent": slope,
++        "constant": math.exp(intercept),
++        "r2": r2,
++    }
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("jsonl", type=Path)
++    parser.add_argument("--out-dir", type=Path, default=None)
++    args = parser.parse_args()
++
++    rows = read_rows(args.jsonl)
++    out_dir = args.out_dir or args.jsonl.with_suffix("")
++    out_dir.mkdir(parents=True, exist_ok=True)
++
++    paired: dict[tuple, dict[str, dict]] = defaultdict(dict)
++    for row in rows:
++        backend = row.get("backend")
++        if backend in ("dense_core", "mathlib_matrix"):
++            paired[pair_key(row)][backend] = row
++
++    speedups: list[dict] = []
++    mismatches: list[dict] = []
++    for key, group in sorted(paired.items()):
++        dense = group.get("dense_core")
++        mathlib = group.get("mathlib_matrix")
++        if not dense or not mathlib:
++            continue
++        if dense["checksum"] != mathlib["checksum"]:
++            mismatches.append(
++                {
++                    "operation": key[0],
++                    "element": key[1],
++                    "setup_policy": key[2],
++                    "rows": key[3],
++                    "cols": key[4],
++                    "inner": key[5],
++                    "dense_checksum": dense["checksum"],
++                    "mathlib_checksum": mathlib["checksum"],
++                }
++            )
++        dense_ms = float(dense["median_ms"])
++        mathlib_ms = float(mathlib["median_ms"])
++        speedups.append(
++            {
++                "operation": key[0],
++                "element": key[1],
++                "setup_policy": key[2],
++                "rows": key[3],
++                "cols": key[4],
++                "inner": key[5],
++                "warmups": key[6],
++                "repeats": key[7],
++                "dense_median_ms": dense_ms,
++                "mathlib_median_ms": mathlib_ms,
++                "speedup_mathlib_over_dense": mathlib_ms / dense_ms if dense_ms else "",
++                "dense_cv": dense.get("cv", ""),
++                "mathlib_cv": mathlib.get("cv", ""),
++            }
++        )
++
++    write_csv(
++        out_dir / "speedups.csv",
++        [
++            "operation",
++            "element",
++            "setup_policy",
++            "rows",
++            "cols",
++            "inner",
++            "warmups",
++            "repeats",
++            "dense_median_ms",
++            "mathlib_median_ms",
++            "speedup_mathlib_over_dense",
++            "dense_cv",
++            "mathlib_cv",
++        ],
++        speedups,
++    )
++    write_csv(
++        out_dir / "checksum-mismatches.csv",
++        [
++            "operation",
++            "element",
++            "setup_policy",
++            "rows",
++            "cols",
++            "inner",
++            "dense_checksum",
++            "mathlib_checksum",
++        ],
++        mismatches,
++    )
++
++    points_by_group: dict[tuple, list[tuple[float, float]]] = defaultdict(list)
++    for row in rows:
++        n = float(row["rows"])
++        time_ms = float(row["median_ms"])
++        points_by_group[complexity_key(row)].append((n, time_ms))
++
++    complexity_rows: list[dict] = []
++    for key, points in sorted(points_by_group.items()):
++        fit = linreg_loglog(points)
++        if not fit:
++            continue
++        backend, operation, element, setup_policy = key
++        complexity_rows.append(
++            {
++                "backend": backend,
++                "operation": operation,
++                "element": element,
++                "setup_policy": setup_policy,
++                **fit,
++            }
++        )
++
++    write_csv(
++        out_dir / "complexity.csv",
++        [
++            "backend",
++            "operation",
++            "element",
++            "setup_policy",
++            "point_count",
++            "min_n",
++            "max_n",
++            "exponent",
++            "constant",
++            "r2",
++        ],
++        complexity_rows,
++    )
++
++    by_operation: dict[str, list[float]] = defaultdict(list)
++    for row in speedups:
++        speedup = row["speedup_mathlib_over_dense"]
++        if speedup != "":
++            by_operation[row["operation"]].append(float(speedup))
++
++    summary = {
++        "jsonl": str(args.jsonl),
++        "record_count": len(rows),
++        "paired_group_count": len(speedups),
++        "checksum_mismatch_count": len(mismatches),
++        "operations": sorted({row["operation"] for row in rows}),
++        "max_rows": max((int(row["rows"]) for row in rows), default=0),
++        "speedup_median_by_operation": {
++            op: median(values) for op, values in sorted(by_operation.items())
++        },
++    }
++
++    with (out_dir / "summary.json").open("w") as f:
++      json.dump(summary, f, indent=2, sort_keys=True)
++      f.write("\n")
++
++    print(f"records: {summary['record_count']}")
++    print(f"paired groups: {summary['paired_group_count']}")
++    print(f"checksum mismatches: {summary['checksum_mismatch_count']}")
++    print(f"max rows: {summary['max_rows']}")
++    for op, value in summary["speedup_median_by_operation"].items():
++        print(f"median speedup {op}: {value:.3f}x")
++    print(f"wrote: {out_dir}")
++    return 1 if mismatches else 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())
+
+diff --git a/bench-tools/make_densematrix_benchmark_bundle.py b/bench-tools/make_densematrix_benchmark_bundle.py
+new file mode 100755
+index 0000000..f165421
+--- /dev/null
++++ b/bench-tools/make_densematrix_benchmark_bundle.py
+@@ -0,0 +1,1226 @@
++#!/usr/bin/env python3
++"""Create a handoff bundle for DenseMatrix benchmark results.
++
++The bundle is intended for poster/report collaborators.  It contains the raw
++JSONL, summary tables, generated figures, machine/environment metadata, source
++snapshots, and scripts for reproducing the full benchmark from the repository.
++"""
++
++from __future__ import annotations
++
++import argparse
++import csv
++import json
++import math
++import os
++import shutil
++import subprocess
++import zipfile
++from collections import defaultdict
++from datetime import datetime
++from pathlib import Path
++from statistics import median
++
++
++PAIRED_OPERATIONS = ["construct", "get", "add", "smul", "transpose", "mul_square"]
++DEFAULT_SIZES = "4,8,16,24,32,48,64,80,96,128,160,192,256,384,512,768,1024,1536,2048"
++DEFAULT_WARMUPS = "10"
++DEFAULT_REPEATS = "50"
++DEFAULT_CORE = "3"
++REPO_SNAPSHOT_EXCLUDES = {
++    ".git",
++    ".lake",
++    "bench-results",
++    "__pycache__",
++    ".pytest_cache",
++    ".mypy_cache",
++    ".ruff_cache",
++}
++
++
++def read_jsonl(path: Path) -> list[dict]:
++    rows: list[dict] = []
++    with path.open() as f:
++        for line_no, line in enumerate(f, start=1):
++            line = line.strip()
++            if not line:
++                continue
++            try:
++                rows.append(json.loads(line))
++            except json.JSONDecodeError as exc:
++                raise SystemExit(f"{path}:{line_no}: invalid JSON: {exc}") from exc
++    return rows
++
++
++def read_csv(path: Path) -> list[dict]:
++    with path.open(newline="") as f:
++        return list(csv.DictReader(f))
++
++
++def write_csv(path: Path, fieldnames: list[str], rows: list[dict]) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    with path.open("w", newline="") as f:
++        writer = csv.DictWriter(f, fieldnames=fieldnames)
++        writer.writeheader()
++        writer.writerows(rows)
++
++
++def write_text(path: Path, text: str) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text(text)
++
++
++def write_json(path: Path, value: object) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
++
++
++def copy_file(src: Path, dst: Path) -> None:
++    dst.parent.mkdir(parents=True, exist_ok=True)
++    shutil.copy2(src, dst)
++
++
++def run_capture(args: list[str], cwd: Path, allow_failure: bool = False) -> str:
++    proc = subprocess.run(args, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
++    if proc.returncode != 0 and not allow_failure:
++        raise SystemExit(f"command failed ({proc.returncode}): {' '.join(args)}\n{proc.stdout}")
++    return proc.stdout
++
++
++def parse_iso(text: str) -> datetime | None:
++    text = text.strip()
++    if not text:
++        return None
++    try:
++        return datetime.fromisoformat(text)
++    except ValueError:
++        return None
++
++
++def linreg_loglog(points: list[tuple[float, float]]) -> tuple[float, float] | None:
++    clean = [(x, y) for x, y in points if x > 0 and y > 0]
++    if len(clean) < 2:
++        return None
++    xs = [math.log(x) for x, _ in clean]
++    ys = [math.log(y) for _, y in clean]
++    x_mean = sum(xs) / len(xs)
++    y_mean = sum(ys) / len(ys)
++    ss_xx = sum((x - x_mean) ** 2 for x in xs)
++    if ss_xx == 0:
++        return None
++    ss_xy = sum((x - x_mean) * (y - y_mean) for x, y in zip(xs, ys))
++    slope = ss_xy / ss_xx
++    intercept = y_mean - slope * x_mean
++    y_hat = [intercept + slope * x for x in xs]
++    ss_tot = sum((y - y_mean) ** 2 for y in ys)
++    ss_res = sum((y - yh) ** 2 for y, yh in zip(ys, y_hat))
++    r2 = 1.0 if ss_tot == 0 else 1.0 - ss_res / ss_tot
++    return slope, r2
++
++
++def fmt_float(value: float, digits: int = 3) -> str:
++    return f"{value:.{digits}f}"
++
++
++def fmt_ms_or_s(ms: float) -> str:
++    if ms >= 1000:
++        return f"{ms / 1000:.3f} s"
++    return f"{ms:.3f} ms"
++
++
++def benchmark_key(row: dict) -> tuple:
++    return (
++        row["backend"],
++        row["operation"],
++        row["element"],
++        row["setup_policy"],
++        int(row["rows"]),
++        int(row["cols"]),
++        int(row["inner"]),
++    )
++
++
++def collect_speedups(summary_dir: Path) -> list[dict]:
++    rows = read_csv(summary_dir / "speedups.csv")
++    for row in rows:
++        row["rows"] = int(row["rows"])
++        row["cols"] = int(row["cols"])
++        row["inner"] = int(row["inner"])
++        row["warmups"] = int(row["warmups"])
++        row["repeats"] = int(row["repeats"])
++        row["dense_median_ms"] = float(row["dense_median_ms"])
++        row["mathlib_median_ms"] = float(row["mathlib_median_ms"])
++        row["speedup_mathlib_over_dense"] = float(row["speedup_mathlib_over_dense"])
++        row["dense_cv"] = float(row["dense_cv"])
++        row["mathlib_cv"] = float(row["mathlib_cv"])
++    return rows
++
++
++def operation_summary(speedups: list[dict]) -> list[dict]:
++    out: list[dict] = []
++    by_op: dict[str, list[dict]] = defaultdict(list)
++    for row in speedups:
++        by_op[row["operation"]].append(row)
++    for op in PAIRED_OPERATIONS:
++        rows = by_op.get(op, [])
++        if not rows:
++            continue
++        values = [row["speedup_mathlib_over_dense"] for row in rows]
++        at_max = max(rows, key=lambda row: row["rows"])
++        out.append(
++            {
++                "operation": op,
++                "point_count": len(rows),
++                "min_n": min(row["rows"] for row in rows),
++                "max_n": max(row["rows"] for row in rows),
++                "min_speedup": min(values),
++                "median_speedup": median(values),
++                "max_speedup": max(values),
++                "speedup_at_max_n": at_max["speedup_mathlib_over_dense"],
++                "dense_median_ms_at_max_n": at_max["dense_median_ms"],
++                "mathlib_median_ms_at_max_n": at_max["mathlib_median_ms"],
++            }
++        )
++    return out
++
++
++def endpoint_table(speedups: list[dict], n: int) -> list[dict]:
++    rows = [row for row in speedups if row["rows"] == n]
++    rows.sort(key=lambda row: PAIRED_OPERATIONS.index(row["operation"]))
++    return [
++        {
++            "operation": row["operation"],
++            "n": row["rows"],
++            "dense_median_ms": row["dense_median_ms"],
++            "mathlib_median_ms": row["mathlib_median_ms"],
++            "speedup_mathlib_over_dense": row["speedup_mathlib_over_dense"],
++            "dense_cv": row["dense_cv"],
++            "mathlib_cv": row["mathlib_cv"],
++        }
++        for row in rows
++    ]
++
++
++def mul_square_table(speedups: list[dict]) -> list[dict]:
++    rows = [row for row in speedups if row["operation"] == "mul_square"]
++    rows.sort(key=lambda row: row["rows"])
++    return [
++        {
++            "n": row["rows"],
++            "dense_median_s": row["dense_median_ms"] / 1000.0,
++            "mathlib_median_s": row["mathlib_median_ms"] / 1000.0,
++            "speedup_mathlib_over_dense": row["speedup_mathlib_over_dense"],
++            "dense_cv": row["dense_cv"],
++            "mathlib_cv": row["mathlib_cv"],
++        }
++        for row in rows
++    ]
++
++
++def conversion_table(records: list[dict]) -> list[dict]:
++    rows = [
++        row
++        for row in records
++        if row["backend"] == "dense_conversion" and row["operation"] in ("ofMatrix", "toMatrix")
++    ]
++    rows.sort(key=lambda row: (int(row["rows"]), row["operation"]))
++    return [
++        {
++            "operation": row["operation"],
++            "n": int(row["rows"]),
++            "median_ms": float(row["median_ms"]),
++            "mean_ms": float(row["mean_ms"]),
++            "p95_ms": float(row["p95_ms"]),
++            "cv": float(row["cv"]),
++        }
++        for row in rows
++    ]
++
++
++def complexity_by_cutoff(records: list[dict]) -> list[dict]:
++    out: list[dict] = []
++    cutoffs = [4, 128, 256, 512]
++    for cutoff in cutoffs:
++        for operation in PAIRED_OPERATIONS:
++            for backend in ("dense_core", "mathlib_matrix"):
++                rows = [
++                    row
++                    for row in records
++                    if row["backend"] == backend
++                    and row["operation"] == operation
++                    and int(row["rows"]) >= cutoff
++                ]
++                fit = linreg_loglog([(float(row["rows"]), float(row["median_ms"])) for row in rows])
++                if fit is None:
++                    continue
++                exponent, r2 = fit
++                out.append(
++                    {
++                        "min_n_cutoff": cutoff,
++                        "backend": backend,
++                        "operation": operation,
++                        "point_count": len(rows),
++                        "min_n": min(int(row["rows"]) for row in rows),
++                        "max_n": max(int(row["rows"]) for row in rows),
++                        "exponent": exponent,
++                        "r2": r2,
++                    }
++                )
++    return out
++
++
++def quality_summary(records: list[dict], speedups: list[dict], result_dir: Path, summary_dir: Path) -> dict:
++    start = parse_iso((result_dir / "start-time.txt").read_text() if (result_dir / "start-time.txt").exists() else "")
++    end = parse_iso((result_dir / "end-time.txt").read_text() if (result_dir / "end-time.txt").exists() else "")
++    elapsed_hours = None if start is None or end is None else (end - start).total_seconds() / 3600.0
++    measured_hours = sum(sum(int(x) for x in row.get("samples_ns", [])) for row in records) / 1e9 / 3600.0
++    all_cv = [float(row["cv"]) for row in records]
++    large_cv = [float(row["cv"]) for row in records if int(row["rows"]) >= 128]
++    mismatches_path = summary_dir / "checksum-mismatches.csv"
++    mismatch_count = max(0, len(read_csv(mismatches_path))) if mismatches_path.exists() else None
++    return {
++        "record_count": len(records),
++        "sample_count": sum(int(row["repeats"]) for row in records),
++        "paired_group_count": len(speedups),
++        "checksum_mismatch_count": mismatch_count,
++        "max_rows": max(int(row["rows"]) for row in records),
++        "elapsed_hours": elapsed_hours,
++        "measured_sample_hours": measured_hours,
++        "median_cv_all_records": median(all_cv),
++        "max_cv_all_records": max(all_cv),
++        "large_record_count_n_ge_128": len(large_cv),
++        "median_cv_n_ge_128": median(large_cv),
++        "max_cv_n_ge_128": max(large_cv),
++    }
++
++
++def svg_escape(text: str) -> str:
++    return (
++        text.replace("&", "&amp;")
++        .replace("<", "&lt;")
++        .replace(">", "&gt;")
++        .replace('"', "&quot;")
++    )
++
++
++def svg_line_chart(
++    path: Path,
++    title: str,
++    x_label: str,
++    y_label: str,
++    series: list[tuple[str, list[tuple[float, float]], str]],
++    *,
++    log_x: bool = False,
++    log_y: bool = False,
++    width: int = 960,
++    height: int = 620,
++) -> None:
++    margin_left = 90
++    margin_right = 40
++    margin_top = 70
++    margin_bottom = 80
++    plot_w = width - margin_left - margin_right
++    plot_h = height - margin_top - margin_bottom
++
++    all_points = [point for _, points, _ in series for point in points if point[0] > 0 and point[1] > 0]
++    xs = [math.log10(x) if log_x else x for x, _ in all_points]
++    ys = [math.log10(y) if log_y else y for _, y in all_points]
++    x_min, x_max = min(xs), max(xs)
++    y_min, y_max = min(ys), max(ys)
++    if x_min == x_max:
++        x_min -= 1
++        x_max += 1
++    if y_min == y_max:
++        y_min -= 1
++        y_max += 1
++
++    def sx(x: float) -> float:
++        value = math.log10(x) if log_x else x
++        return margin_left + (value - x_min) / (x_max - x_min) * plot_w
++
++    def sy(y: float) -> float:
++        value = math.log10(y) if log_y else y
++        return margin_top + plot_h - (value - y_min) / (y_max - y_min) * plot_h
++
++    def tick_values(min_value: float, max_value: float, log_scale: bool) -> list[float]:
++        if log_scale:
++            start = math.ceil(min_value)
++            end = math.floor(max_value)
++            ticks = [10 ** power for power in range(start, end + 1)]
++            return ticks or [10 ** min_value, 10 ** max_value]
++        step = (max_value - min_value) / 5.0
++        return [min_value + i * step for i in range(6)]
++
++    x_ticks = tick_values(x_min, x_max, log_x)
++    y_ticks = tick_values(y_min, y_max, log_y)
++    x_tick_positions = [(tick, sx(tick)) for tick in x_ticks]
++    y_tick_positions = [(tick, sy(tick)) for tick in y_ticks]
++
++    parts = [
++        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
++        '<rect width="100%" height="100%" fill="#ffffff"/>',
++        f'<text x="{width / 2}" y="34" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">{svg_escape(title)}</text>',
++        f'<rect x="{margin_left}" y="{margin_top}" width="{plot_w}" height="{plot_h}" fill="#fafafa" stroke="#d0d0d0"/>',
++    ]
++
++    for tick, x in x_tick_positions:
++        label = f"{tick:g}"
++        parts.append(f'<line x1="{x:.2f}" y1="{margin_top}" x2="{x:.2f}" y2="{margin_top + plot_h}" stroke="#e8e8e8"/>')
++        parts.append(f'<text x="{x:.2f}" y="{margin_top + plot_h + 28}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">{label}</text>')
++    for tick, y in y_tick_positions:
++        label = f"{tick:g}"
++        parts.append(f'<line x1="{margin_left}" y1="{y:.2f}" x2="{margin_left + plot_w}" y2="{y:.2f}" stroke="#e8e8e8"/>')
++        parts.append(f'<text x="{margin_left - 12}" y="{y + 4:.2f}" text-anchor="end" font-family="Arial, sans-serif" font-size="13">{label}</text>')
++
++    for name, points, color in series:
++        coords = " ".join(f"{sx(x):.2f},{sy(y):.2f}" for x, y in points)
++        parts.append(f'<polyline points="{coords}" fill="none" stroke="{color}" stroke-width="3"/>')
++        for x, y in points:
++            parts.append(f'<circle cx="{sx(x):.2f}" cy="{sy(y):.2f}" r="3.5" fill="{color}"/>')
++
++    legend_x = margin_left + 16
++    legend_y = margin_top + 24
++    for idx, (name, _, color) in enumerate(series):
++        y = legend_y + idx * 24
++        parts.append(f'<line x1="{legend_x}" y1="{y}" x2="{legend_x + 26}" y2="{y}" stroke="{color}" stroke-width="4"/>')
++        parts.append(f'<text x="{legend_x + 36}" y="{y + 5}" font-family="Arial, sans-serif" font-size="14">{svg_escape(name)}</text>')
++
++    parts.append(f'<text x="{margin_left + plot_w / 2}" y="{height - 24}" text-anchor="middle" font-family="Arial, sans-serif" font-size="16">{svg_escape(x_label)}</text>')
++    parts.append(
++        f'<text x="24" y="{margin_top + plot_h / 2}" text-anchor="middle" transform="rotate(-90 24 {margin_top + plot_h / 2})" '
++        f'font-family="Arial, sans-serif" font-size="16">{svg_escape(y_label)}</text>'
++    )
++    parts.append("</svg>\n")
++    write_text(path, "\n".join(parts))
++
++
++def svg_bar_chart(
++    path: Path,
++    title: str,
++    x_label: str,
++    y_label: str,
++    bars: list[tuple[str, float, str]],
++    *,
++    width: int = 960,
++    height: int = 620,
++) -> None:
++    margin_left = 90
++    margin_right = 40
++    margin_top = 70
++    margin_bottom = 120
++    plot_w = width - margin_left - margin_right
++    plot_h = height - margin_top - margin_bottom
++    max_v = max(value for _, value, _ in bars)
++    min_v = min(0.0, min(value for _, value, _ in bars))
++    value_span = max_v - min_v or 1.0
++
++    def sy(value: float) -> float:
++        return margin_top + plot_h - (value - min_v) / value_span * plot_h
++
++    parts = [
++        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
++        '<rect width="100%" height="100%" fill="#ffffff"/>',
++        f'<text x="{width / 2}" y="34" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">{svg_escape(title)}</text>',
++        f'<rect x="{margin_left}" y="{margin_top}" width="{plot_w}" height="{plot_h}" fill="#fafafa" stroke="#d0d0d0"/>',
++    ]
++    for idx in range(6):
++        value = min_v + idx * value_span / 5
++        y = sy(value)
++        parts.append(f'<line x1="{margin_left}" y1="{y:.2f}" x2="{margin_left + plot_w}" y2="{y:.2f}" stroke="#e8e8e8"/>')
++        parts.append(f'<text x="{margin_left - 12}" y="{y + 4:.2f}" text-anchor="end" font-family="Arial, sans-serif" font-size="13">{value:.1f}</text>')
++
++    slot = plot_w / len(bars)
++    bar_w = min(76, slot * 0.62)
++    zero_y = sy(0.0)
++    for idx, (label, value, color) in enumerate(bars):
++        x = margin_left + idx * slot + (slot - bar_w) / 2
++        y = min(sy(value), zero_y)
++        h = abs(zero_y - sy(value))
++        parts.append(f'<rect x="{x:.2f}" y="{y:.2f}" width="{bar_w:.2f}" height="{h:.2f}" fill="{color}"/>')
++        parts.append(f'<text x="{x + bar_w / 2:.2f}" y="{y - 8:.2f}" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">{value:.2f}</text>')
++        parts.append(
++            f'<text x="{x + bar_w / 2:.2f}" y="{margin_top + plot_h + 28}" text-anchor="middle" '
++            f'transform="rotate(-35 {x + bar_w / 2:.2f} {margin_top + plot_h + 28})" '
++            f'font-family="Arial, sans-serif" font-size="13">{svg_escape(label)}</text>'
++        )
++
++    parts.append(f'<text x="{margin_left + plot_w / 2}" y="{height - 24}" text-anchor="middle" font-family="Arial, sans-serif" font-size="16">{svg_escape(x_label)}</text>')
++    parts.append(
++        f'<text x="24" y="{margin_top + plot_h / 2}" text-anchor="middle" transform="rotate(-90 24 {margin_top + plot_h / 2})" '
++        f'font-family="Arial, sans-serif" font-size="16">{svg_escape(y_label)}</text>'
++    )
++    parts.append("</svg>\n")
++    write_text(path, "\n".join(parts))
++
++
++def create_figures(figures_dir: Path, speedups: list[dict], op_summary: list[dict], complexity_rows: list[dict]) -> None:
++    figures_dir.mkdir(parents=True, exist_ok=True)
++    mul_rows = [row for row in speedups if row["operation"] == "mul_square"]
++    mul_rows.sort(key=lambda row: row["rows"])
++    svg_line_chart(
++        figures_dir / "mul_square_runtime_loglog.svg",
++        "Square Matrix Multiplication Runtime",
++        "n",
++        "median runtime (seconds)",
++        [
++            ("DenseMatrix", [(row["rows"], row["dense_median_ms"] / 1000.0) for row in mul_rows], "#0b6e99"),
++            ("mathlib Matrix", [(row["rows"], row["mathlib_median_ms"] / 1000.0) for row in mul_rows], "#b23a48"),
++        ],
++        log_x=True,
++        log_y=True,
++    )
++    svg_line_chart(
++        figures_dir / "mul_square_speedup.svg",
++        "Square Matrix Multiplication Speedup",
++        "n",
++        "mathlib median / DenseMatrix median",
++        [
++            (
++                "speedup",
++                [(row["rows"], row["speedup_mathlib_over_dense"]) for row in mul_rows],
++                "#3f7d20",
++            )
++        ],
++        log_x=True,
++        log_y=False,
++    )
++    svg_bar_chart(
++        figures_dir / "operation_median_speedups.svg",
++        "Median Speedup by Operation",
++        "operation",
++        "mathlib median / DenseMatrix median",
++        [
++            (
++                row["operation"],
++                float(row["median_speedup"]),
++                "#0b6e99" if float(row["median_speedup"]) >= 1.0 else "#b23a48",
++            )
++            for row in op_summary
++        ],
++    )
++    large = [
++        row
++        for row in complexity_rows
++        if row["min_n_cutoff"] == 128 and row["operation"] in PAIRED_OPERATIONS
++    ]
++    dense = {row["operation"]: row for row in large if row["backend"] == "dense_core"}
++    mathlib = {row["operation"]: row for row in large if row["backend"] == "mathlib_matrix"}
++    bars: list[tuple[str, float, str]] = []
++    for op in PAIRED_OPERATIONS:
++        if op in dense:
++            bars.append((f"{op} dense", dense[op]["exponent"], "#0b6e99"))
++        if op in mathlib:
++            bars.append((f"{op} mathlib", mathlib[op]["exponent"], "#b23a48"))
++    svg_bar_chart(
++        figures_dir / "complexity_exponents_n_ge_128.svg",
++        "Empirical Complexity Exponents (n >= 128)",
++        "operation/backend",
++        "log-log slope",
++        bars,
++        width=1200,
++    )
++
++
++def markdown_table(headers: list[str], rows: list[list[str]]) -> str:
++    out = ["| " + " | ".join(headers) + " |", "| " + " | ".join("---" for _ in headers) + " |"]
++    out.extend("| " + " | ".join(row) + " |" for row in rows)
++    return "\n".join(out)
++
++
++def create_readme(
++    path: Path,
++    *,
++    quality: dict,
++    op_summary: list[dict],
++    endpoint: list[dict],
++    max_n: int,
++) -> None:
++    op_table = markdown_table(
++        [
++            "operation",
++            "median speedup",
++            f"speedup at n={max_n}",
++            f"Dense median at n={max_n}",
++            f"mathlib median at n={max_n}",
++        ],
++        [
++            [
++                row["operation"],
++                f"{float(row['median_speedup']):.2f}x",
++                f"{float(row['speedup_at_max_n']):.2f}x",
++                fmt_ms_or_s(float(row["dense_median_ms_at_max_n"])),
++                fmt_ms_or_s(float(row["mathlib_median_ms_at_max_n"])),
++            ]
++            for row in op_summary
++        ],
++    )
++    endpoint_table_md = markdown_table(
++        ["operation", "Dense median", "mathlib median", "speedup", "Dense CV", "mathlib CV"],
++        [
++            [
++                row["operation"],
++                fmt_ms_or_s(float(row["dense_median_ms"])),
++                fmt_ms_or_s(float(row["mathlib_median_ms"])),
++                f"{float(row['speedup_mathlib_over_dense']):.2f}x",
++                f"{float(row['dense_cv']):.4f}",
++                f"{float(row['mathlib_cv']):.4f}",
++            ]
++            for row in endpoint
++        ],
++    )
++    elapsed = quality.get("elapsed_hours")
++    measured = quality.get("measured_sample_hours")
++    text = f"""# DenseMatrix vs mathlib Matrix Benchmark Bundle
++
++This bundle contains the completed benchmark run, generated tables, figures,
++metadata, and reproduction scripts for the DenseMatrix vs mathlib Matrix
++comparison.
++
++## Headline
++
++DenseMatrix is not uniformly 20x faster across all kernels.  The defensible
++poster claim is narrower and stronger:
++
++> DenseMatrix achieves about 20x faster full square matrix multiplication than
++> mathlib Matrix on this benchmark, while preserving the expected cubic scaling.
++
++## Run validity
++
++- Exit status: 0.
++- Raw benchmark records: {quality['record_count']}.
++- Measured samples: {quality['sample_count']}.
++- Paired DenseMatrix/mathlib checksum mismatches: {quality['checksum_mismatch_count']}.
++- Largest matrix size: n={quality['max_rows']}.
++- Wall-clock run time: {elapsed:.2f} hours.
++- Total measured sample time: {measured:.2f} hours.
++- Median CV over all records: {quality['median_cv_all_records']:.4f}.
++- Median CV for n >= 128: {quality['median_cv_n_ge_128']:.4f}.
++
++## Operation summary
++
++Speedup is `mathlib median runtime / DenseMatrix median runtime`; values above
++1 mean DenseMatrix is faster.
++
++{op_table}
++
++## Endpoint at n={max_n}
++
++{endpoint_table_md}
++
++## Important interpretation
++
++- Matrix multiplication is the main result: median speedup is about 20.9x over
++  all sizes and about 19.2x at n={max_n}.
++- The O(n^2) kernels are not a uniform win.  `get` is about 2x, `add` is about
++  1.4x, `transpose` is near parity at the largest size, and `smul`/`construct`
++  can be faster in mathlib Matrix.
++- Complexity fits should be described as empirical log-log slopes.  For n >=
++  128, multiplication fits approximately n^3 for both backends, while the other
++  kernels fit approximately n^2.
++- The data supports a constant-factor story, not an asymptotic-complexity story.
++
++## Files
++
++- `data/results.jsonl`: raw benchmark records, including per-repeat samples.
++- `data/summary/`: generated summary CSV/JSON files.
++- `BENCHMARK_LOGIC.md`: exact benchmark actions and source definitions.
++- `tables/`: poster-friendly derived tables.
++- `figures/`: SVG plots generated from the raw data.
++- `metadata/`: command, environment, git state, and progress log.
++- `repo/`: self-contained repository source snapshot for reproduction.
++- `source/`: source index, selected source snapshots, dependency lock files,
++  and patch material.  Start with `source/README.md`.
++- `scripts/`: scripts for full reproduction and quick smoke checks.
++
++## Reproduction
++
++From the unpacked bundle root:
++
++```bash
++./scripts/reproduce_quick_smoke.sh
++./scripts/reproduce_full_48h.sh
++```
++
++Both scripts default to the bundled `repo/` source snapshot.  You can pass an
++external checkout path if you want to run against a different repository.
++
++The full reproduction uses the same profile as this run: sizes
++`{DEFAULT_SIZES}`, {DEFAULT_WARMUPS} warmups, {DEFAULT_REPEATS} repeats, CPU core
++{DEFAULT_CORE}, and resumable JSONL output.  Lake may need to download/build
++dependencies if they are not already available locally.  The bundle includes
++source code and `lake-manifest.json`, but it intentionally does not include
++`.lake` build artifacts or vendored mathlib sources.
++"""
++    write_text(path, text)
++
++
++def create_conclusions(
++    path: Path,
++    *,
++    op_summary: list[dict],
++    complexity_rows: list[dict],
++    max_n: int,
++) -> None:
++    large = [
++        row
++        for row in complexity_rows
++        if row["min_n_cutoff"] == 128 and row["operation"] in PAIRED_OPERATIONS
++    ]
++    by_pair = {(row["operation"], row["backend"]): row for row in large}
++    complexity_table = markdown_table(
++        ["operation", "Dense exponent", "Dense R2", "mathlib exponent", "mathlib R2"],
++        [
++            [
++                op,
++                fmt_float(float(by_pair[(op, "dense_core")]["exponent"]), 3),
++                fmt_float(float(by_pair[(op, "dense_core")]["r2"]), 5),
++                fmt_float(float(by_pair[(op, "mathlib_matrix")]["exponent"]), 3),
++                fmt_float(float(by_pair[(op, "mathlib_matrix")]["r2"]), 5),
++            ]
++            for op in PAIRED_OPERATIONS
++        ],
++    )
++    ops = {row["operation"]: row for row in op_summary}
++    text = f"""# Conclusions and Poster-Ready Claims
++
++## Recommended main claim
++
++DenseMatrix achieves about 20x faster full square matrix multiplication than
++mathlib Matrix in the compiled benchmark harness, while both implementations
++retain the expected O(n^3) empirical scaling.
++
++Useful numeric support:
++
++- Median multiplication speedup over all tested sizes:
++  {float(ops['mul_square']['median_speedup']):.2f}x.
++- Best observed multiplication speedup:
++  {float(ops['mul_square']['max_speedup']):.2f}x.
++- Multiplication speedup at n={max_n}:
++  {float(ops['mul_square']['speedup_at_max_n']):.2f}x.
++- DenseMatrix median multiplication time at n={max_n}:
++  {float(ops['mul_square']['dense_median_ms_at_max_n']) / 1000.0:.2f} s.
++- mathlib Matrix median multiplication time at n={max_n}:
++  {float(ops['mul_square']['mathlib_median_ms_at_max_n']) / 1000.0:.2f} s.
++
++## Claims to avoid
++
++- Do not claim DenseMatrix is 20x faster for every matrix operation.
++- Do not claim the result changes asymptotic complexity.
++- Do not compare DenseMatrix conversion overhead against mathlib Matrix as if it
++  were a paired kernel.  `ofMatrix` and `toMatrix` are DenseMatrix conversion
++  costs, not mathlib-vs-Dense speedups.
++
++## Empirical complexity
++
++Log-log fits on large sizes, n >= 128:
++
++{complexity_table}
++
++Interpretation: multiplication is cubic for both backends; construction,
++indexing, addition, scalar multiplication, and transpose are quadratic.
++
++## Secondary findings
++
++- `get` is a clear DenseMatrix win, about {float(ops['get']['median_speedup']):.2f}x median.
++- `add` is a modest DenseMatrix win, about {float(ops['add']['median_speedup']):.2f}x median.
++- `transpose` is close to parity at n={max_n}, despite a median speedup of
++  {float(ops['transpose']['median_speedup']):.2f}x across all sizes.
++- `construct` and `smul` are not wins in this run; mathlib Matrix is faster at
++  the largest size.
++
++## Suggested figure set
++
++1. `figures/mul_square_runtime_loglog.svg`.
++2. `figures/mul_square_speedup.svg`.
++3. `figures/operation_median_speedups.svg`.
++4. `figures/complexity_exponents_n_ge_128.svg`.
++"""
++    write_text(path, text)
++
++
++def create_benchmark_logic(path: Path) -> None:
++    write_text(
++        path,
++        """# Benchmark Logic
++
++This benchmark times executable Lean definitions in a Lake executable.  It does
++not time correctness theorems.  Theorems in
++`ProvableComputation/LinearAlgebra/DenseMatrix/Defs.lean`, such as
++`DenseMatrix.toMatrix_ofMatrix` and `DenseMatrix.ofMatrix_toMatrix`, document
++and prove conversion behavior, but they are not called by the timed benchmark
++actions.
++
++## Source Files
++
++- DenseMatrix implementation:
++  `repo/ProvableComputation/LinearAlgebra/DenseMatrix/Defs.lean`
++- Benchmark harness:
++  `repo/ProvableComputation/Bench/DenseMatrixBench.lean`
++- Executable entry point:
++  `repo/ProvableComputation/Bench/DenseMatrixRunner.lean`
++
++## DenseMatrix Operations Under Test
++
++The DenseMatrix implementation is a row-major `Vector` representation:
++
++- `structure DenseMatrix`: stores `data : Vector alpha (m * n)`.
++- `DenseMatrix.get!`: unchecked row-major read used by checksum scans.
++- `DenseMatrix.get`: checked row-major read.
++- `DenseMatrix.ofMatrix`: converts mathlib `Matrix` to row-major storage.
++- `DenseMatrix.toMatrix`: exposes a dense matrix as mathlib `Matrix`.
++- `DenseMatrix.of`: constructs dense storage from `Fin m -> Fin n -> alpha`.
++- `DenseMatrix.add`: zips two backing vectors with addition.
++- `DenseMatrix.smul`: maps scalar multiplication over the backing vector.
++- `DenseMatrix.transpose`: builds transposed row-major storage.
++- `DenseMatrix.mul`: builds output storage and computes dot products with
++  checked dense reads.
++
++The mathlib side uses function-backed `Matrix (Fin m) (Fin n) alpha`
++expressions from `Mathlib.Data.Matrix.Basic`, notably `Matrix.of`, matrix
++addition, transpose, and multiplication.
++
++## Input Generation
++
++Inputs are deterministic, not random:
++
++- `natEntry seed i j = ((seed + (i+1)*73 + (j+1)*193 + i*j*17) % 997) + 1`.
++- `intEntry seed i j = ((seed + (i+1)*97 + (j+1)*53 + i*j*29) % 401) - 200`.
++- `matrixNat` and `matrixInt` use `Matrix.of`.
++- `denseNat` and `denseInt` use `DenseMatrix.of`.
++
++The benchmark uses square sizes.  The completed run used:
++
++```text
++4,8,16,24,32,48,64,80,96,128,160,192,256,384,512,768,1024,1536,2048
++```
++
++## Timing Method
++
++Each JSONL record is produced by `measurePure`.
++
++1. Run `warmups` untimed calls to the benchmark action.
++2. For each measured repeat:
++   - read `IO.monoNanosNow`;
++   - call the pure action, which returns a `Nat` checksum;
++   - mix that checksum into a running checksum using `mixNat`;
++   - call `forceNatForTiming` on the mixed checksum;
++   - read `IO.monoNanosNow` again;
++   - store the elapsed nanoseconds in `samples_ns`.
++3. Summarize `samples_ns` as min, median, mean, p95, max, standard deviation,
++   and coefficient of variation.
++
++The JSON `checksum` field is the repeat-mixed checksum, not just one raw matrix
++checksum.  Paired DenseMatrix/mathlib records use the same repeat count, so
++equal checksums still verify that every repeated action produced the same
++full-output value under the same checksum scan.
++
++## Evaluation and Checksums
++
++Every action returns a `Nat` checksum.  This forces evaluation of the whole
++output matrix rather than only constructing a lazy expression:
++
++- `checksumDenseUnchecked`: loops over natural-number row/column indices and
++  reads `DenseMatrix.get!`.
++- `checksumDenseChecked`: loops over `List.finRange` and reads
++  `DenseMatrix.get`.
++- `checksumMatrix`: loops over `List.finRange` and reads `A i j` from a mathlib
++  `Matrix`.
++
++For paired DenseMatrix/mathlib operations, the summary script compares the JSON
++checksums.  In the completed run there were 114 paired groups and 0 checksum
++mismatches.
++
++## Record Map
++
++`setup_policy` matters:
++
++- `setup_inclusive`: construction/conversion is inside the timed action.
++- `prebuilt_inputs`: input matrices are constructed once per size before the
++  timed record; the timed action measures the operation plus checksum scan.
++
++| operation | backend | element | setup_policy | timed wrapper | timed operation |
++| --- | --- | --- | --- | --- | --- |
++| construct | dense_core | Nat | setup_inclusive | `runDenseConstructNat n` | `denseNat n n 11`, i.e. `DenseMatrix.of` over deterministic entries, then `checksumDenseUnchecked` |
++| construct | mathlib_matrix | Nat | setup_inclusive | `runMatrixConstructNat n` | `matrixNat n n 11`, i.e. `Matrix.of` over deterministic entries, then `checksumMatrix` |
++| ofMatrix | dense_conversion | Nat | setup_inclusive | `runDenseOfMatrixNat n` | `DenseMatrix.ofMatrix (matrixNat n n 13)`, then `checksumDenseUnchecked` |
++| toMatrix | dense_conversion | Nat | setup_inclusive | `runDenseToMatrixNat n` | `DenseMatrix.toMatrix (denseNat n n 17)`, then `checksumMatrix` |
++| get | dense_core | Nat | prebuilt_inputs | `runDenseGetNatFrom denseNatGet` | full checked scan with `checksumDenseChecked`, which calls `DenseMatrix.get` |
++| get | mathlib_matrix | Nat | prebuilt_inputs | `runMatrixGetNatFrom matrixNatGet` | full scan with `checksumMatrix`, which calls `A i j` |
++| add | dense_core | Int | prebuilt_inputs | `runDenseAddIntFrom denseIntA denseIntB` | `DenseMatrix.add A B`, then `checksumDenseUnchecked` |
++| add | mathlib_matrix | Int | prebuilt_inputs | `runMatrixAddIntFrom matrixIntA matrixIntB` | mathlib matrix addition `A + B`, then `checksumMatrix` |
++| smul | dense_core | Int | prebuilt_inputs | `runDenseSmulIntFrom denseIntSmul` | `DenseMatrix.smul (-7) A`, then `checksumDenseUnchecked` |
++| smul | mathlib_matrix | Int | prebuilt_inputs | `runMatrixSmulIntFrom matrixIntSmul` | `Matrix.of fun i j => (-7) * A i j`, then `checksumMatrix` |
++| transpose | dense_core | Int | prebuilt_inputs | `runDenseTransposeIntFrom denseIntA` | `DenseMatrix.transpose A`, then `checksumDenseUnchecked` |
++| transpose | mathlib_matrix | Int | prebuilt_inputs | `runMatrixTransposeIntFrom matrixIntA` | `A.transpose`, then `checksumMatrix` |
++| mul_square | dense_core | Nat | prebuilt_inputs | `runDenseMulNatFrom denseNatMulA denseNatMulB` | `DenseMatrix.mul A B`, then `checksumDenseUnchecked` |
++| mul_square | mathlib_matrix | Nat | prebuilt_inputs | `runMatrixMulNatFrom matrixNatMulA matrixNatMulB` | mathlib matrix multiplication `A * B`, then `checksumMatrix` |
++
++## Seeds Used Per Size
++
++For every size `n`, `appendSquareBenchmarks` constructs:
++
++- construct pair: seed 11.
++- Dense conversion `ofMatrix`: seed 13.
++- Dense conversion `toMatrix`: seed 17.
++- get pair: seed 19.
++- add pair: Int seeds 43 and 47.
++- smul pair: Int seed 53.
++- transpose pair: Int seed 43.
++- multiplication pair: Nat seeds 61 and 67.
++
++## What the Main Multiplication Benchmark Measures
++
++For `mul_square` at size `n`, the inputs are prebuilt once:
++
++```lean
++let denseNatMulA := denseNat n n 61
++let denseNatMulB := denseNat n n 67
++let matrixNatMulA := matrixNat n n 61
++let matrixNatMulB := matrixNat n n 67
++```
++
++Then each repeat times one of:
++
++```lean
++checksumDenseUnchecked natCode (DenseMatrix.mul denseNatMulA denseNatMulB)
++checksumMatrix natCode (matrixNatMulA * matrixNatMulB)
++```
++
++So the reported multiplication time includes multiplication plus full output
++checksum traversal, but not input construction.
++""",
++    )
++
++
++def create_reproduce_scripts(scripts_dir: Path) -> None:
++    full = f"""#!/usr/bin/env bash
++set -euo pipefail
++
++BUNDLE_DIR="$(cd "$(dirname "${{BASH_SOURCE[0]}}")/.." && pwd)"
++REPO="${{1:-${{DENSEMATRIX_REPO:-$BUNDLE_DIR/repo}}}}"
++
++if [[ ! -f "$REPO/lakefile.toml" || ! -d "$REPO/ProvableComputation" ]]; then
++  echo "usage: $0 [/path/to/provable_computation]" >&2
++  echo "default bundled repo not found: $REPO" >&2
++  exit 2
++fi
++
++cd "$REPO"
++echo "Using repository source: $REPO"
++if [[ ! -d "$REPO/.lake/packages/mathlib" ]]; then
++  echo "No bundled .lake mathlib checkout found; Lake may clone/build dependencies." >&2
++fi
++test -x bench-tools/run_densematrix_48h.sh || {{
++  echo "missing bench-tools/run_densematrix_48h.sh in $REPO" >&2
++  echo "Use the benchmark branch/source snapshot included in this bundle." >&2
++  exit 2
++}}
++test -x bench-tools/summarize_densematrix_jsonl.py || {{
++  echo "missing bench-tools/summarize_densematrix_jsonl.py in $REPO" >&2
++  exit 2
++}}
++
++OUT_DIR="${{DENSEMATRIX_OUT_DIR:-bench-results/densematrix-48h-reproduced}}"
++CORE="${{DENSEMATRIX_CORE:-{DEFAULT_CORE}}}"
++
++bench-tools/run_densematrix_48h.sh \\
++  --out-dir "$OUT_DIR" \\
++  --core "$CORE" \\
++  --sizes "{DEFAULT_SIZES}" \\
++  --warmups {DEFAULT_WARMUPS} \\
++  --repeats {DEFAULT_REPEATS}
++
++bench-tools/summarize_densematrix_jsonl.py "$OUT_DIR/results.jsonl" --out-dir "$OUT_DIR/summary"
++if [[ "$OUT_DIR" = /* ]]; then
++  RESULT_PATH="$OUT_DIR"
++else
++  RESULT_PATH="$REPO/$OUT_DIR"
++fi
++echo "Full reproduction complete: $RESULT_PATH"
++echo "Reference bundle: $BUNDLE_DIR"
++"""
++    quick = """#!/usr/bin/env bash
++set -euo pipefail
++
++BUNDLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
++REPO="${1:-${DENSEMATRIX_REPO:-$BUNDLE_DIR/repo}}"
++
++if [[ ! -f "$REPO/lakefile.toml" || ! -d "$REPO/ProvableComputation" ]]; then
++  echo "usage: $0 [/path/to/provable_computation]" >&2
++  echo "default bundled repo not found: $REPO" >&2
++  exit 2
++fi
++
++cd "$REPO"
++echo "Using repository source: $REPO"
++if [[ ! -d "$REPO/.lake/packages/mathlib" ]]; then
++  echo "No bundled .lake mathlib checkout found; Lake may clone/build dependencies." >&2
++fi
++OUT_DIR="${DENSEMATRIX_OUT_DIR:-bench-results/densematrix-smoke-reproduced}"
++CORE="${DENSEMATRIX_CORE:-3}"
++
++bench-tools/run_densematrix_48h.sh \\
++  --out-dir "$OUT_DIR" \\
++  --core "$CORE" \\
++  --sizes "4,8" \\
++  --warmups 1 \\
++  --repeats 1 \\
++  --quiet
++
++bench-tools/summarize_densematrix_jsonl.py "$OUT_DIR/results.jsonl" --out-dir "$OUT_DIR/summary"
++if [[ "$OUT_DIR" = /* ]]; then
++  RESULT_PATH="$OUT_DIR"
++else
++  RESULT_PATH="$REPO/$OUT_DIR"
++fi
++echo "Smoke reproduction complete: $RESULT_PATH"
++"""
++    write_text(scripts_dir / "reproduce_full_48h.sh", full)
++    write_text(scripts_dir / "reproduce_quick_smoke.sh", quick)
++    os.chmod(scripts_dir / "reproduce_full_48h.sh", 0o755)
++    os.chmod(scripts_dir / "reproduce_quick_smoke.sh", 0o755)
++
++
++def create_source_patch(repo: Path, dst: Path, source_files: list[Path]) -> None:
++    chunks: list[str] = []
++    tracked = run_capture(["git", "diff", "--", ".gitignore", "lakefile.toml"], repo, allow_failure=True)
++    if tracked.strip():
++        chunks.append(tracked.rstrip() + "\n")
++    for rel in source_files:
++        output = run_capture(["git", "diff", "--no-index", "--", "/dev/null", str(rel)], repo, allow_failure=True)
++        if output.strip():
++            chunks.append(output.rstrip() + "\n")
++    write_text(dst, "\n".join(chunks))
++
++
++def copy_repo_snapshot(repo: Path, dst: Path) -> None:
++    def ignore(_dir: str, names: list[str]) -> set[str]:
++        ignored = set()
++        for name in names:
++            if name in REPO_SNAPSHOT_EXCLUDES or name.endswith(".pyc"):
++                ignored.add(name)
++        return ignored
++
++    shutil.copytree(repo, dst, ignore=ignore)
++
++
++def create_source_index(path: Path) -> None:
++    write_text(
++        path,
++        """# Source Snapshot
++
++The runnable repository snapshot is in `../repo/`.  Selected source files are
++also copied here under their repository-relative paths for easier reading.
++
++## DenseMatrix implementation
++
++- `ProvableComputation/LinearAlgebra/DenseMatrix/Defs.lean`
++  - `structure DenseMatrix`
++  - row-major indexing
++  - `get`, `set`, `ofMatrix`, `toMatrix`
++  - `add`, `smul`, `transpose`, `mul`
++
++## Benchmark harness
++
++- `ProvableComputation/Bench/DenseMatrixBench.lean`
++  - deterministic inputs
++  - checksum evaluation
++  - DenseMatrix vs mathlib Matrix benchmark records
++  - JSONL runner and argument parser
++- `ProvableComputation/Bench/DenseMatrixRunner.lean`
++  - Lake executable entry point
++
++## Benchmark scripts
++
++- `bench-tools/run_densematrix_48h.sh`
++- `bench-tools/summarize_densematrix_jsonl.py`
++- `bench-tools/make_densematrix_benchmark_bundle.py`
++
++## Project/dependency files
++
++- `lakefile.toml`
++- `lake-manifest.json`
++- `lean-toolchain`
++- `.gitignore`
++
++Mathlib source itself is not vendored in this bundle.  The Lean toolchain and
++Lake manifest identify the dependency versions used by the repository.
++""",
++    )
++
++
++def create_manifest(root: Path) -> None:
++    files = sorted(path.relative_to(root) for path in root.rglob("*") if path.is_file())
++    lines = [str(path) for path in files if path.name != "MANIFEST.txt"]
++    write_text(root / "MANIFEST.txt", "\n".join(lines) + "\n")
++
++
++def make_archives(bundle_dir: Path) -> tuple[Path, Path]:
++    parent = bundle_dir.parent
++    base = bundle_dir.name
++    zip_path = parent / f"{base}.zip"
++    tar_path = parent / f"{base}.tar.gz"
++    if zip_path.exists():
++        zip_path.unlink()
++    if tar_path.exists():
++        tar_path.unlink()
++    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
++        for path in sorted(bundle_dir.rglob("*")):
++            if path.is_file():
++                zf.write(path, path.relative_to(parent))
++    shutil.make_archive(str(parent / base), "gztar", root_dir=parent, base_dir=base)
++    return zip_path, tar_path
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--result-dir", type=Path, default=Path("bench-results/densematrix-48h"))
++    parser.add_argument("--bundle-name", default=None)
++    parser.add_argument("--out-dir", type=Path, default=None)
++    parser.add_argument("--force", action="store_true")
++    args = parser.parse_args()
++
++    repo = Path.cwd()
++    result_dir = args.result_dir
++    summary_dir = result_dir / "summary"
++    jsonl = result_dir / "results.jsonl"
++    if not jsonl.exists():
++        raise SystemExit(f"missing results file: {jsonl}")
++    if not (summary_dir / "speedups.csv").exists():
++        raise SystemExit(f"missing summary; run: bench-tools/summarize_densematrix_jsonl.py {jsonl} --out-dir {summary_dir}")
++
++    records = read_jsonl(jsonl)
++    speedups = collect_speedups(summary_dir)
++    op_summary = operation_summary(speedups)
++    max_n = max(row["rows"] for row in speedups)
++    endpoint = endpoint_table(speedups, max_n)
++    mul_rows = mul_square_table(speedups)
++    conversions = conversion_table(records)
++    complexity_rows = complexity_by_cutoff(records)
++    quality = quality_summary(records, speedups, result_dir, summary_dir)
++
++    bundle_name = args.bundle_name or f"densematrix-benchmark-bundle-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
++    out_dir = args.out_dir or result_dir / "bundle"
++    bundle_dir = out_dir / bundle_name
++    if bundle_dir.exists():
++        if not args.force:
++            raise SystemExit(f"bundle already exists: {bundle_dir}; pass --force to replace it")
++        shutil.rmtree(bundle_dir)
++    bundle_dir.mkdir(parents=True)
++
++    copy_file(jsonl, bundle_dir / "data" / "results.jsonl")
++    for path in sorted(summary_dir.glob("*")):
++        if path.is_file():
++            copy_file(path, bundle_dir / "data" / "summary" / path.name)
++    for name in [
++        "command.txt",
++        "end-time.txt",
++        "exit-status.txt",
++        "git-diff-stat.txt",
++        "git-diff.patch",
++        "git-rev.txt",
++        "git-status.txt",
++        "lake-version.txt",
++        "lean-version.txt",
++        "lscpu.txt",
++        "progress.log",
++        "run-config.txt",
++        "start-time.txt",
++        "uname.txt",
++    ]:
++        src = result_dir / name
++        if src.exists():
++            copy_file(src, bundle_dir / "metadata" / name)
++
++    write_csv(
++        bundle_dir / "tables" / "operation_summary.csv",
++        [
++            "operation",
++            "point_count",
++            "min_n",
++            "max_n",
++            "min_speedup",
++            "median_speedup",
++            "max_speedup",
++            "speedup_at_max_n",
++            "dense_median_ms_at_max_n",
++            "mathlib_median_ms_at_max_n",
++        ],
++        op_summary,
++    )
++    write_csv(
++        bundle_dir / "tables" / f"endpoint_n_{max_n}.csv",
++        [
++            "operation",
++            "n",
++            "dense_median_ms",
++            "mathlib_median_ms",
++            "speedup_mathlib_over_dense",
++            "dense_cv",
++            "mathlib_cv",
++        ],
++        endpoint,
++    )
++    write_csv(
++        bundle_dir / "tables" / "mul_square_by_size.csv",
++        ["n", "dense_median_s", "mathlib_median_s", "speedup_mathlib_over_dense", "dense_cv", "mathlib_cv"],
++        mul_rows,
++    )
++    write_csv(
++        bundle_dir / "tables" / "conversion_overheads.csv",
++        ["operation", "n", "median_ms", "mean_ms", "p95_ms", "cv"],
++        conversions,
++    )
++    write_csv(
++        bundle_dir / "tables" / "complexity_by_cutoff.csv",
++        ["min_n_cutoff", "backend", "operation", "point_count", "min_n", "max_n", "exponent", "r2"],
++        complexity_rows,
++    )
++    write_json(bundle_dir / "tables" / "quality_summary.json", quality)
++
++    create_figures(bundle_dir / "figures", speedups, op_summary, complexity_rows)
++    create_readme(bundle_dir / "README.md", quality=quality, op_summary=op_summary, endpoint=endpoint, max_n=max_n)
++    create_conclusions(bundle_dir / "CONCLUSIONS.md", op_summary=op_summary, complexity_rows=complexity_rows, max_n=max_n)
++    create_benchmark_logic(bundle_dir / "BENCHMARK_LOGIC.md")
++    copy_repo_snapshot(repo, bundle_dir / "repo")
++
++    source_files = [
++        Path("ProvableComputation/LinearAlgebra/DenseMatrix/Defs.lean"),
++        Path("ProvableComputation/Bench/DenseMatrixBench.lean"),
++        Path("ProvableComputation/Bench/DenseMatrixRunner.lean"),
++        Path("bench-tools/run_densematrix_48h.sh"),
++        Path("bench-tools/summarize_densematrix_jsonl.py"),
++        Path("bench-tools/make_densematrix_benchmark_bundle.py"),
++    ]
++    for rel in source_files:
++        if (repo / rel).exists():
++            copy_file(repo / rel, bundle_dir / "source" / rel)
++    for rel in [Path("lakefile.toml"), Path("lake-manifest.json"), Path(".gitignore"), Path("lean-toolchain")]:
++        if (repo / rel).exists():
++            copy_file(repo / rel, bundle_dir / "source" / rel)
++    create_source_index(bundle_dir / "source" / "README.md")
++    create_source_patch(repo, bundle_dir / "source" / "benchmark-harness.patch", source_files)
++
++    scripts_dir = bundle_dir / "scripts"
++    copy_file(repo / "bench-tools" / "run_densematrix_48h.sh", scripts_dir / "run_densematrix_48h.sh")
++    copy_file(repo / "bench-tools" / "summarize_densematrix_jsonl.py", scripts_dir / "summarize_densematrix_jsonl.py")
++    create_reproduce_scripts(scripts_dir)
++    for script in scripts_dir.glob("*.sh"):
++        os.chmod(script, 0o755)
++    for script in scripts_dir.glob("*.py"):
++        os.chmod(script, 0o755)
++
++    create_manifest(bundle_dir)
++    zip_path, tar_path = make_archives(bundle_dir)
++
++    print(f"bundle_dir={bundle_dir}")
++    print(f"zip={zip_path}")
++    print(f"tar_gz={tar_path}")
++    print(f"records={quality['record_count']}")
++    print(f"checksum_mismatches={quality['checksum_mismatch_count']}")
++    print(f"mul_square_median_speedup={next(row['median_speedup'] for row in op_summary if row['operation'] == 'mul_square'):.3f}x")
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

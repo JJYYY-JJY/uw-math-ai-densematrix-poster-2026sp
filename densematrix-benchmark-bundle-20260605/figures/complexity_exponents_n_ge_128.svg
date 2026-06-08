@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="600.0" y="34" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">Empirical Complexity Exponents (n &gt;= 128)</text>
+<rect x="90" y="70" width="1070" height="430" fill="#fafafa" stroke="#d0d0d0"/>
+<line x1="90" y1="500.00" x2="1160" y2="500.00" stroke="#e8e8e8"/>
+<text x="78" y="504.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">0.0</text>
+<line x1="90" y1="414.00" x2="1160" y2="414.00" stroke="#e8e8e8"/>
+<text x="78" y="418.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">0.6</text>
+<line x1="90" y1="328.00" x2="1160" y2="328.00" stroke="#e8e8e8"/>
+<text x="78" y="332.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">1.2</text>
+<line x1="90" y1="242.00" x2="1160" y2="242.00" stroke="#e8e8e8"/>
+<text x="78" y="246.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">1.8</text>
+<line x1="90" y1="156.00" x2="1160" y2="156.00" stroke="#e8e8e8"/>
+<text x="78" y="160.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">2.4</text>
+<line x1="90" y1="70.00" x2="1160" y2="70.00" stroke="#e8e8e8"/>
+<text x="78" y="74.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">3.0</text>
+<rect x="106.94" y="212.14" width="55.28" height="287.86" fill="#0b6e99"/>
+<text x="134.58" y="204.14" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">2.03</text>
+<text x="134.58" y="528" text-anchor="middle" transform="rotate(-35 134.58 528)" font-family="Arial, sans-serif" font-size="13">construct dense</text>
+<rect x="196.11" y="217.09" width="55.28" height="282.91" fill="#b23a48"/>
+<text x="223.75" y="209.09" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">2.00</text>
+<text x="223.75" y="528" text-anchor="middle" transform="rotate(-35 223.75 528)" font-family="Arial, sans-serif" font-size="13">construct mathlib</text>
+<rect x="285.28" y="218.24" width="55.28" height="281.76" fill="#0b6e99"/>
+<text x="312.92" y="210.24" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">1.99</text>
+<text x="312.92" y="528" text-anchor="middle" transform="rotate(-35 312.92 528)" font-family="Arial, sans-serif" font-size="13">get dense</text>
+<rect x="374.44" y="218.74" width="55.28" height="281.26" fill="#b23a48"/>
+<text x="402.08" y="210.74" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">1.99</text>
+<text x="402.08" y="528" text-anchor="middle" transform="rotate(-35 402.08 528)" font-family="Arial, sans-serif" font-size="13">get mathlib</text>
+<rect x="463.61" y="209.14" width="55.28" height="290.86" fill="#0b6e99"/>
+<text x="491.25" y="201.14" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">2.06</text>
+<text x="491.25" y="528" text-anchor="middle" transform="rotate(-35 491.25 528)" font-family="Arial, sans-serif" font-size="13">add dense</text>
+<rect x="552.78" y="218.17" width="55.28" height="281.83" fill="#b23a48"/>
+<text x="580.42" y="210.17" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">1.99</text>
+<text x="580.42" y="528" text-anchor="middle" transform="rotate(-35 580.42 528)" font-family="Arial, sans-serif" font-size="13">add mathlib</text>
+<rect x="641.94" y="210.67" width="55.28" height="289.33" fill="#0b6e99"/>
+<text x="669.58" y="202.67" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">2.05</text>
+<text x="669.58" y="528" text-anchor="middle" transform="rotate(-35 669.58 528)" font-family="Arial, sans-serif" font-size="13">smul dense</text>
+<rect x="731.11" y="217.23" width="55.28" height="282.77" fill="#b23a48"/>
+<text x="758.75" y="209.23" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">2.00</text>
+<text x="758.75" y="528" text-anchor="middle" transform="rotate(-35 758.75 528)" font-family="Arial, sans-serif" font-size="13">smul mathlib</text>
+<rect x="820.28" y="207.66" width="55.28" height="292.34" fill="#0b6e99"/>
+<text x="847.92" y="199.66" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">2.07</text>
+<text x="847.92" y="528" text-anchor="middle" transform="rotate(-35 847.92 528)" font-family="Arial, sans-serif" font-size="13">transpose dense</text>
+<rect x="909.44" y="218.04" width="55.28" height="281.96" fill="#b23a48"/>
+<text x="937.08" y="210.04" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">1.99</text>
+<text x="937.08" y="528" text-anchor="middle" transform="rotate(-35 937.08 528)" font-family="Arial, sans-serif" font-size="13">transpose mathlib</text>
+<rect x="998.61" y="70.00" width="55.28" height="430.00" fill="#0b6e99"/>
+<text x="1026.25" y="62.00" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">3.04</text>
+<text x="1026.25" y="528" text-anchor="middle" transform="rotate(-35 1026.25 528)" font-family="Arial, sans-serif" font-size="13">mul_square dense</text>
+<rect x="1087.78" y="75.06" width="55.28" height="424.94" fill="#b23a48"/>
+<text x="1115.42" y="67.06" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">3.00</text>
+<text x="1115.42" y="528" text-anchor="middle" transform="rotate(-35 1115.42 528)" font-family="Arial, sans-serif" font-size="13">mul_square mathlib</text>
+<text x="625.0" y="596" text-anchor="middle" font-family="Arial, sans-serif" font-size="16">operation/backend</text>
+<text x="24" y="285.0" text-anchor="middle" transform="rotate(-90 24 285.0)" font-family="Arial, sans-serif" font-size="16">log-log slope</text>
+</svg>

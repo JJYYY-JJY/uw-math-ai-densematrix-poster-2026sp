@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="480.0" y="34" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">Square Matrix Multiplication Speedup</text>
+<rect x="90" y="70" width="830" height="470" fill="#fafafa" stroke="#d0d0d0"/>
+<line x1="211.91" y1="70" x2="211.91" y2="540" stroke="#e8e8e8"/>
+<text x="211.91" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">10</text>
+<line x1="518.27" y1="70" x2="518.27" y2="540" stroke="#e8e8e8"/>
+<text x="518.27" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">100</text>
+<line x1="824.62" y1="70" x2="824.62" y2="540" stroke="#e8e8e8"/>
+<text x="824.62" y="568" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">1000</text>
+<line x1="90" y1="540.00" x2="920" y2="540.00" stroke="#e8e8e8"/>
+<text x="78" y="544.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">6.80949</text>
+<line x1="90" y1="446.00" x2="920" y2="446.00" stroke="#e8e8e8"/>
+<text x="78" y="450.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">9.9675</text>
+<line x1="90" y1="352.00" x2="920" y2="352.00" stroke="#e8e8e8"/>
+<text x="78" y="356.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">13.1255</text>
+<line x1="90" y1="258.00" x2="920" y2="258.00" stroke="#e8e8e8"/>
+<text x="78" y="262.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">16.2835</text>
+<line x1="90" y1="164.00" x2="920" y2="164.00" stroke="#e8e8e8"/>
+<text x="78" y="168.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">19.4415</text>
+<line x1="90" y1="70.00" x2="920" y2="70.00" stroke="#e8e8e8"/>
+<text x="78" y="74.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">22.5995</text>
+<polyline points="90.00,540.00 182.22,425.49 274.44,286.81 328.39,239.22 366.67,200.11 420.61,174.04 458.89,156.65 488.58,119.72 512.84,103.30 551.11,103.47 580.80,85.91 605.06,78.47 643.33,71.39 697.28,70.00 735.56,109.24 789.50,96.33 827.78,95.43 881.72,128.25 920.00,172.21" fill="none" stroke="#3f7d20" stroke-width="3"/>
+<circle cx="90.00" cy="540.00" r="3.5" fill="#3f7d20"/>
+<circle cx="182.22" cy="425.49" r="3.5" fill="#3f7d20"/>
+<circle cx="274.44" cy="286.81" r="3.5" fill="#3f7d20"/>
+<circle cx="328.39" cy="239.22" r="3.5" fill="#3f7d20"/>
+<circle cx="366.67" cy="200.11" r="3.5" fill="#3f7d20"/>
+<circle cx="420.61" cy="174.04" r="3.5" fill="#3f7d20"/>
+<circle cx="458.89" cy="156.65" r="3.5" fill="#3f7d20"/>
+<circle cx="488.58" cy="119.72" r="3.5" fill="#3f7d20"/>
+<circle cx="512.84" cy="103.30" r="3.5" fill="#3f7d20"/>
+<circle cx="551.11" cy="103.47" r="3.5" fill="#3f7d20"/>
+<circle cx="580.80" cy="85.91" r="3.5" fill="#3f7d20"/>
+<circle cx="605.06" cy="78.47" r="3.5" fill="#3f7d20"/>
+<circle cx="643.33" cy="71.39" r="3.5" fill="#3f7d20"/>
+<circle cx="697.28" cy="70.00" r="3.5" fill="#3f7d20"/>
+<circle cx="735.56" cy="109.24" r="3.5" fill="#3f7d20"/>
+<circle cx="789.50" cy="96.33" r="3.5" fill="#3f7d20"/>
+<circle cx="827.78" cy="95.43" r="3.5" fill="#3f7d20"/>
+<circle cx="881.72" cy="128.25" r="3.5" fill="#3f7d20"/>
+<circle cx="920.00" cy="172.21" r="3.5" fill="#3f7d20"/>
+<line x1="106" y1="94" x2="132" y2="94" stroke="#3f7d20" stroke-width="4"/>
+<text x="142" y="99" font-family="Arial, sans-serif" font-size="14">speedup</text>
+<text x="505.0" y="596" text-anchor="middle" font-family="Arial, sans-serif" font-size="16">n</text>
+<text x="24" y="305.0" text-anchor="middle" transform="rotate(-90 24 305.0)" font-family="Arial, sans-serif" font-size="16">mathlib median / DenseMatrix median</text>
+</svg>

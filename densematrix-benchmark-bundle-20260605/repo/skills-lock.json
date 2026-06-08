@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "github-issues": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/github-issues/SKILL.md",
+      "computedHash": "efa9746a60c4507ad5a7ad60e1e9a704b4eea06c1229befe3c86b3bbcaea67c9"
+    },
+    "lean4": {
+      "source": "cameronfreer/lean4-skills",
+      "sourceType": "github",
+      "skillPath": "plugins/lean4/skills/lean4/SKILL.md",
+      "computedHash": "be6eee9bb4ee0b71ebfd98e580a8acef0922913ac05b25655316c6f332e1edd5"
+    }
+  }
+}

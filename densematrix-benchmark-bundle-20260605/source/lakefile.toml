@@ -1,0 +1,26 @@
+name = "provable_computation"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["ProvableComputation", "TEST"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+autoImplicit = false
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.30.0"
+
+[[lean_lib]]
+name = "ProvableComputation"
+
+[[lean_lib]]
+name = "TEST"
+
+[[lean_exe]]
+name = "densematrix_bench"
+root = "ProvableComputation.Bench.DenseMatrixRunner"

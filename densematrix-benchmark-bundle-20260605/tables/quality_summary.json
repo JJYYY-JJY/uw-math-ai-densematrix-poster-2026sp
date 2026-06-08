@@ -1,0 +1,14 @@
+{
+  "checksum_mismatch_count": 0,
+  "elapsed_hours": 30.854166666666668,
+  "large_record_count_n_ge_128": 140,
+  "max_cv_all_records": 0.405667,
+  "max_cv_n_ge_128": 0.144886,
+  "max_rows": 2048,
+  "measured_sample_hours": 25.716591178892223,
+  "median_cv_all_records": 0.013318,
+  "median_cv_n_ge_128": 0.010043,
+  "paired_group_count": 114,
+  "record_count": 266,
+  "sample_count": 13300
+}

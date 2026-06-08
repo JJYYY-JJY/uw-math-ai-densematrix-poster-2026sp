@@ -6,55 +6,93 @@
     <title>DenseMatrix Public Artifact, UW 2026 Spring</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
-  <body class="artifact-body">
-    <main class="artifact-page">
-      <header class="artifact-header">
-        <img
-          class="uw-signature"
-          src="./assets/uw-signature-left-purple.png"
-          alt="University of Washington"
-        />
-        <div>
-          <div class="lab-title">UW Math AI Lab</div>
-          <div class="lab-meta">Spring 2026 · Provable Computation</div>
-        </div>
-      </header>
-
-      <section class="artifact-hero">
+  <body>
+    <header class="site-header compact-header">
+      <img
+        class="uw-signature"
+        src="./assets/uw-signature-left-purple.png"
+        alt="University of Washington"
+      />
+      <div class="header-copy">
         <p class="eyebrow">Public artifact</p>
         <h1>DenseMatrix Spring 2026 poster materials</h1>
-        <p class="subtitle">
-          PDF, redacted benchmark summaries, checksums, and reproduction notes
-          for the Odegard Library poster session.
+        <p class="lead">
+          Poster PDF, benchmark data, generated tables, figures, source
+          snapshot, metadata, and reproduction scripts.
         </p>
-      </section>
+      </div>
+    </header>
 
-      <section class="artifact-links" aria-label="Artifact files">
+    <main class="artifact-main">
+      <section class="download-grid" aria-label="Artifact files">
         <a href="./densematrix-poster-2026sp.pdf">
           <strong>Poster PDF</strong>
-          <span>16:9 display-ready export</span>
+          <span>Display-ready export</span>
+        </a>
+        <a href="./densematrix-benchmark-bundle-20260605/README.md">
+          <strong>Bundle README</strong>
+          <span>Top-level benchmark bundle guide</span>
+        </a>
+        <a href="./densematrix-benchmark-bundle-20260605/data/results.jsonl">
+          <strong>Raw Results</strong>
+          <span>266 benchmark records with samples</span>
+        </a>
+        <a href="./densematrix-benchmark-bundle-20260605/tables/operation_summary.csv">
+          <strong>Operation Table</strong>
+          <span>Median speedups and n=2048 endpoint values</span>
+        </a>
+        <a href="./densematrix-benchmark-bundle-20260605/figures/mul_square_runtime_loglog.svg">
+          <strong>Runtime Figure</strong>
+          <span>Square multiplication log-log runtime plot</span>
+        </a>
+        <a href="./densematrix-benchmark-bundle-20260605/source/README.md">
+          <strong>Source Index</strong>
+          <span>Selected source files and patch material</span>
+        </a>
+        <a href="./densematrix-benchmark-bundle-20260605/repo/README.md">
+          <strong>Runnable Snapshot</strong>
+          <span>Bundled Lean repository snapshot</span>
+        </a>
+        <a href="./densematrix-benchmark-bundle-20260605/metadata/run-config.txt">
+          <strong>Run Config</strong>
+          <span>Core, sizes, warmups, repeats, and output path</span>
         </a>
         <a href="./data/poster-data.json">
-          <strong>Summary Data</strong>
-          <span>Redacted benchmark values used by the charts</span>
+          <strong>Site Data</strong>
+          <span>Compact JSON used by this page</span>
         </a>
         <a href="./REPRODUCE.md">
           <strong>Reproduce</strong>
-          <span>Private-source commands and public file inventory</span>
+          <span>Smoke and full reproduction commands</span>
         </a>
         <a href="./SHA256SUMS">
           <strong>Checksums</strong>
-          <span>Integrity hashes for this public export</span>
+          <span>Integrity hashes for tracked artifact files</span>
         </a>
         <a href="./">
-          <strong>Poster HTML</strong>
-          <span>Browser-rendered copy of the displayed poster</span>
-        </a>
-        <a href="https://github.com/JJYYY-JJY/uw-math-ai-densematrix-poster-2026sp">
-          <strong>GitHub Mirror</strong>
-          <span>Public artifact repository</span>
+          <strong>Poster Page</strong>
+          <span>Browser-rendered artifact overview</span>
         </a>
       </section>
+
+      <section class="panel">
+        <p class="eyebrow">Bundle contents</p>
+        <h2>20260605 benchmark package</h2>
+        <p class="body-copy">
+          The extracted bundle is preserved at
+          <code>densematrix-benchmark-bundle-20260605/</code>. It includes raw
+          JSONL data, derived CSV and JSON summaries, SVG figures, machine and
+          run metadata, a runnable repository snapshot, a source index, and
+          reproduction scripts.
+        </p>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <span>DenseMatrix poster artifact, UW Spring 2026.</span>
+      <a href="https://github.com/JJYYY-JJY/uw-math-ai-densematrix-poster-2026sp">
+        GitHub mirror
+      </a>
+    </footer>
   </body>
 </html>

@@ -1,0 +1,22 @@
+diff --git a/.gitignore b/.gitignore
+index 5b1b1f7..19b49be 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,2 +1,5 @@
+ /.lake
++bench-results/
++__pycache__/
++*.pyc
+ .DS_Store
+diff --git a/lakefile.toml b/lakefile.toml
+index 1bf4e30..61ca1ef 100644
+--- a/lakefile.toml
++++ b/lakefile.toml
+@@ -20,3 +20,7 @@ name = "ProvableComputation"
+ 
+ [[lean_lib]]
+ name = "TEST"
++
++[[lean_exe]]
++name = "densematrix_bench"
++root = "ProvableComputation.Bench.DenseMatrixRunner"

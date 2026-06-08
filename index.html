@@ -7,144 +7,110 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <main class="poster">
-      <header class="topbar">
-        <img
-          class="uw-signature"
-          src="./assets/uw-signature-left-purple.png"
-          alt="University of Washington"
-        />
-        <div class="lab-block">
-          <div class="lab-title">UW Math AI Lab</div>
-          <div class="lab-meta">Spring 2026 · Provable Computation</div>
-        </div>
-      </header>
+    <header class="site-header">
+      <img
+        class="uw-signature"
+        src="./assets/uw-signature-left-purple.png"
+        alt="University of Washington"
+      />
+      <div class="header-copy">
+        <p class="eyebrow">UW Math AI Lab</p>
+        <h1>DenseMatrix: a computationally efficient matrix representation in Lean</h1>
+        <p class="lead">
+          Public poster export and benchmark artifact for the Spring 2026
+          Provable Computation project.
+        </p>
+      </div>
+      <nav class="header-actions" aria-label="Primary links">
+        <a class="button primary" href="./densematrix-poster-2026sp.pdf">Poster PDF</a>
+        <a class="button" href="./artifact.html">Artifact Index</a>
+      </nav>
+    </header>
 
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Verified executable linear algebra</p>
-          <h1>DenseMatrix makes Lean matrix algorithms run like data.</h1>
-          <p class="subtitle">
-            Row-major data for RREF, LU, and determinant kernels, bridged back
-            to proof-friendly Matrix theorems.
-          </p>
+    <main>
+      <section class="summary-band" aria-label="Benchmark summary">
+        <div class="metric">
+          <span id="metric-speedup">--x</span>
+          <strong>median multiplication speedup</strong>
         </div>
-        <div class="authors">
-          <div class="authors-copy">
-            <div class="authors-label">Team</div>
-            <div>Annis Wu · Joseph Qian · Junye Ji · Veer Shukla</div>
-            <div class="mentor">Mentor: Dhruv Bhatia</div>
-          </div>
-          <a
-            class="poster-qr"
-            href="https://jjyyy-jjy.github.io/uw-math-ai-densematrix-poster-2026sp/artifact.html"
-            aria-label="Open the public DenseMatrix poster artifact"
-          >
-            <img src="./assets/public-artifact-qr.svg" alt="" />
-            <span>Scan for artifact</span>
-          </a>
+        <div class="metric">
+          <span id="metric-records">--</span>
+          <strong>benchmark records</strong>
+        </div>
+        <div class="metric">
+          <span id="metric-samples">--</span>
+          <strong>measured samples</strong>
+        </div>
+        <div class="metric">
+          <span id="metric-max-n">--</span>
+          <strong>largest square size</strong>
         </div>
       </section>
 
-      <section class="dashboard-grid">
-        <article class="panel claim-panel">
-          <h2>Why DenseMatrix</h2>
+      <section class="poster-frame" aria-label="Poster preview">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Poster</p>
+            <h2>Display-ready PDF</h2>
+          </div>
+          <a class="button" href="./densematrix-poster-2026sp.pdf">Open PDF</a>
+        </div>
+        <object
+          class="pdf-object"
+          data="./densematrix-poster-2026sp.pdf"
+          type="application/pdf"
+        >
           <p>
-            Row-major arrays let kernels work over contiguous data instead of
-            re-evaluating pointwise Matrix functions.
+            PDF preview is unavailable in this browser.
+            <a href="./densematrix-poster-2026sp.pdf">Open the poster PDF.</a>
           </p>
-          <div class="pipeline" aria-label="DenseMatrix proof and execution pipeline">
-            <div class="pipe-node">Matrix API</div>
-            <div class="pipe-arrow">→</div>
-            <div class="pipe-node accent">DenseMatrix.ofMatrix</div>
-            <div class="pipe-arrow">→</div>
-            <div class="pipe-node">Row-major kernels</div>
-            <div class="pipe-arrow">→</div>
-            <div class="pipe-node success">toMatrix theorems</div>
-          </div>
-          <div class="callout">
-            Materialized executable workloads only; Matrix remains the proof API.
-          </div>
-        </article>
-
-        <article class="panel chart-panel">
-          <div class="section-head">
-            <div>
-              <h2>Multiplication Scaling</h2>
-              <p>DenseMatrix vs Matrix→Dense, multiplication median ms.</p>
-            </div>
-            <div id="speedup-range" class="metric-pill">--x</div>
-          </div>
-          <div id="comparison-chart" class="chart-shell"></div>
-          <div class="legend">
-            <span><i class="legend-square-dense"></i> Square DenseMatrix</span>
-            <span><i class="legend-square-materialized"></i> Square Matrix→Dense</span>
-            <span><i class="legend-rect-dense"></i> Rect DenseMatrix</span>
-            <span><i class="legend-rect-materialized"></i> Rect Matrix→Dense</span>
-          </div>
-        </article>
-
-        <article class="panel metrics-panel">
-          <h2>Benchmark Scope</h2>
-          <div class="metric-list">
-            <div>
-              <span class="metric-number" id="metric-records">--</span>
-              <span class="metric-label">records</span>
-            </div>
-            <div>
-              <span class="metric-number" id="metric-materialized">--</span>
-              <span class="metric-label">materialized cases</span>
-            </div>
-            <div>
-              <span class="metric-number" id="metric-max-size">--</span>
-              <span class="metric-label">max extent</span>
-            </div>
-          </div>
-          <table class="protocol-table">
-            <tbody>
-              <tr><th>Protocol</th><td>30 repeats · 5 warmups</td></tr>
-              <tr><th>Sizes</th><td>16, 32, 64, 96, 128, 192, 256</td></tr>
-              <tr><th>Stress</th><td>384, 512, 768, 1024</td></tr>
-              <tr><th>Machine</th><td>pinned CPU core · archived environment</td></tr>
-            </tbody>
-          </table>
-        </article>
-
-        <article class="panel theorem-panel">
-          <h2>Proof Connection</h2>
-          <div class="theorem-grid">
-            <code>DenseMatrix.toMatrix_add</code>
-            <code>DenseMatrix.toMatrix_mul</code>
-            <code>rowEchelonForm_toMatrix</code>
-            <code>luDet_eq_det</code>
-            <code>gaussDet_eq_det</code>
-          </div>
-          <p>
-            Theorems connect executable kernels back to the Matrix API.
-          </p>
-        </article>
-
-        <article class="panel algorithms-panel">
-          <div class="section-head">
-            <div>
-              <h2>Algorithm Kernels</h2>
-              <p>Representative rational kernels at n=128.</p>
-            </div>
-          </div>
-          <div id="algorithm-table" class="algorithm-table"></div>
-        </article>
-
-        <article class="panel export-panel">
-          <h2>Representation Tradeoff</h2>
-          <p>Median ms for pointwise primitives at n=1024.</p>
-          <div id="tradeoff-table" class="tradeoff-table"></div>
-        </article>
+        </object>
       </section>
 
-      <footer class="footer">
-        <span id="source-line">No benchmark bundle loaded.</span>
-      </footer>
+      <section class="content-grid" aria-label="Benchmark details">
+        <article class="panel wide-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Benchmark</p>
+              <h2>Square multiplication runtime</h2>
+            </div>
+            <span id="metric-endpoint" class="status-pill">--x at n=2048</span>
+          </div>
+          <div id="runtime-chart" class="chart-shell"></div>
+        </article>
+
+        <article class="panel">
+          <p class="eyebrow">Protocol</p>
+          <h2>Run scope</h2>
+          <dl class="fact-list">
+            <div><dt>Warmups</dt><dd id="fact-warmups">--</dd></div>
+            <div><dt>Repeats</dt><dd id="fact-repeats">--</dd></div>
+            <div><dt>Pinned core</dt><dd id="fact-core">--</dd></div>
+            <div><dt>Elapsed time</dt><dd id="fact-hours">--</dd></div>
+            <div><dt>Checksum mismatches</dt><dd id="fact-mismatches">--</dd></div>
+          </dl>
+        </article>
+
+        <article class="panel">
+          <p class="eyebrow">Operation summary</p>
+          <h2>Median speedup</h2>
+          <div id="operation-summary" class="bar-list"></div>
+        </article>
+
+        <article class="panel wide-panel">
+          <p class="eyebrow">Endpoint</p>
+          <h2>n=2048 results</h2>
+          <div id="endpoint-table" class="table-wrap"></div>
+        </article>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <span id="source-line">Loading benchmark artifact.</span>
+      <a href="./densematrix-benchmark-bundle-20260605/README.md">Bundle README</a>
+      <a href="./REPRODUCE.md">Reproduce</a>
+      <a href="./SHA256SUMS">SHA256SUMS</a>
+    </footer>
 
     <script src="./data/poster-data.js"></script>
     <script src="./poster.js"></script>

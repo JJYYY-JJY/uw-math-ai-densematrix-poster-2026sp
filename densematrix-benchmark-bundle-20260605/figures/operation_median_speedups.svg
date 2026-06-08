@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="480.0" y="34" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700">Median Speedup by Operation</text>
+<rect x="90" y="70" width="830" height="430" fill="#fafafa" stroke="#d0d0d0"/>
+<line x1="90" y1="500.00" x2="920" y2="500.00" stroke="#e8e8e8"/>
+<text x="78" y="504.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">0.0</text>
+<line x1="90" y1="414.00" x2="920" y2="414.00" stroke="#e8e8e8"/>
+<text x="78" y="418.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">4.2</text>
+<line x1="90" y1="328.00" x2="920" y2="328.00" stroke="#e8e8e8"/>
+<text x="78" y="332.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">8.4</text>
+<line x1="90" y1="242.00" x2="920" y2="242.00" stroke="#e8e8e8"/>
+<text x="78" y="246.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">12.6</text>
+<line x1="90" y1="156.00" x2="920" y2="156.00" stroke="#e8e8e8"/>
+<text x="78" y="160.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">16.7</text>
+<line x1="90" y1="70.00" x2="920" y2="70.00" stroke="#e8e8e8"/>
+<text x="78" y="74.00" text-anchor="end" font-family="Arial, sans-serif" font-size="13">20.9</text>
+<rect x="121.17" y="486.24" width="76.00" height="13.76" fill="#b23a48"/>
+<text x="159.17" y="478.24" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">0.67</text>
+<text x="159.17" y="528" text-anchor="middle" transform="rotate(-35 159.17 528)" font-family="Arial, sans-serif" font-size="13">construct</text>
+<rect x="259.50" y="456.72" width="76.00" height="43.28" fill="#0b6e99"/>
+<text x="297.50" y="448.72" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">2.11</text>
+<text x="297.50" y="528" text-anchor="middle" transform="rotate(-35 297.50 528)" font-family="Arial, sans-serif" font-size="13">get</text>
+<rect x="397.83" y="470.80" width="76.00" height="29.20" fill="#0b6e99"/>
+<text x="435.83" y="462.80" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">1.42</text>
+<text x="435.83" y="528" text-anchor="middle" transform="rotate(-35 435.83 528)" font-family="Arial, sans-serif" font-size="13">add</text>
+<rect x="536.17" y="480.24" width="76.00" height="19.76" fill="#b23a48"/>
+<text x="574.17" y="472.24" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">0.96</text>
+<text x="574.17" y="528" text-anchor="middle" transform="rotate(-35 574.17 528)" font-family="Arial, sans-serif" font-size="13">smul</text>
+<rect x="674.50" y="475.39" width="76.00" height="24.61" fill="#0b6e99"/>
+<text x="712.50" y="467.39" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">1.20</text>
+<text x="712.50" y="528" text-anchor="middle" transform="rotate(-35 712.50 528)" font-family="Arial, sans-serif" font-size="13">transpose</text>
+<rect x="812.83" y="70.00" width="76.00" height="430.00" fill="#0b6e99"/>
+<text x="850.83" y="62.00" text-anchor="middle" font-family="Arial, sans-serif" font-size="13">20.93</text>
+<text x="850.83" y="528" text-anchor="middle" transform="rotate(-35 850.83 528)" font-family="Arial, sans-serif" font-size="13">mul_square</text>
+<text x="505.0" y="596" text-anchor="middle" font-family="Arial, sans-serif" font-size="16">operation</text>
+<text x="24" y="285.0" text-anchor="middle" transform="rotate(-90 24 285.0)" font-family="Arial, sans-serif" font-size="16">mathlib median / DenseMatrix median</text>
+</svg>

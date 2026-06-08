@@ -1,0 +1,14 @@
+interface:
+  display_name: "Lean LSP MCP"
+  short_description: "Prefer Lean LSP MCP for Lean proof work"
+  default_prompt: "Use $lean-lsp-mcp to inspect Lean diagnostics and proof goals before editing this repository."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "lean-lsp"
+      description: "Lean LSP MCP server configured with uvx lean-lsp-mcp"
+      transport: "stdio"
+
+policy:
+  allow_implicit_invocation: true

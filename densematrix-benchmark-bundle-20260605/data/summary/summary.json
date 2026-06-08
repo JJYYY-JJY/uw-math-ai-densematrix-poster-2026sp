@@ -1,0 +1,25 @@
+{
+  "checksum_mismatch_count": 0,
+  "jsonl": "bench-results/densematrix-48h/results.jsonl",
+  "max_rows": 2048,
+  "operations": [
+    "add",
+    "construct",
+    "get",
+    "mul_square",
+    "ofMatrix",
+    "smul",
+    "toMatrix",
+    "transpose"
+  ],
+  "paired_group_count": 114,
+  "record_count": 266,
+  "speedup_median_by_operation": {
+    "add": 1.4212831918048254,
+    "construct": 0.6695927527995553,
+    "get": 2.1065776448672184,
+    "mul_square": 20.929320621561338,
+    "smul": 0.961982609122695,
+    "transpose": 1.1979936483089753
+  }
+}

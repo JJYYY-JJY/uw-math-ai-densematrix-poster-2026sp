@@ -1,0 +1,8 @@
+repo=/home/ji/projects/provable_computation
+out_dir=bench-results/densematrix-48h
+core=3
+sizes=4,8,16,24,32,48,64,80,96,128,160,192,256,384,512,768,1024,1536,2048
+warmups=10
+repeats=50
+results=bench-results/densematrix-48h/results.jsonl
+progress_log=bench-results/densematrix-48h/progress.log
