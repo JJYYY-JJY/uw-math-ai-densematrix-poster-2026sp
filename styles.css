@@ -91,7 +91,7 @@ h1 {
 
 h2 {
   font-size: clamp(1.4rem, 2vw, 2rem);
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .lead {
@@ -106,6 +106,10 @@ h2 {
   color: var(--muted);
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.panel > h2 {
+  margin-bottom: 8px;
 }
 
 .header-actions {

@@ -1,7 +1,7 @@
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./.nojekyll
 bb80a54a16e9d5bd58dd131c19ab6d5ad7eb336c92f100276634b71db8838425  ./README.md
 33492d7995edc1f48d5c06c062e8a8ba9feb22360441f5993adf9a8af88a246f  ./REPRODUCE.md
-14ced83a34fbc196021591267ffbba3cabacf8b7aaf16cd3d0f18d4c00c32b74  ./artifact.html
+ec85d8395b15e9a62683c24b13552f147b6cc5fe1fb79776c03fac77051b4f9c  ./artifact.html
 d08ed21c3e64df8617da9424674bc1c3c57703790e37993097c6a957d5458752  ./assets/public-artifact-qr.svg
 19f4d03687bebd97fafae3896535bccd638f12df751d8e9a3a9b12a9fec5fecb  ./assets/uw-signature-left-purple.png
 1bbba81db838a2bd2fed01782e52a8df3002f55ae4d55dd56d7c9e5ae5d7f5e6  ./data/poster-data.js
@@ -103,6 +103,6 @@ a6c490fae4aae97d00856505a24fc3e22105a714a5d92cb55a48a08a51bc0d3f  ./densematrix-
 154ba582f8faeae414a4a1d7b301fd8d348d5df0ce420617ad139dc0a4fe6d6d  ./densematrix-benchmark-bundle-20260605/tables/operation_summary.csv
 ff7ad68b85fcf2e9e51c8f192e73f4582501c090d4154e0da0811a316c6ba2e0  ./densematrix-benchmark-bundle-20260605/tables/quality_summary.json
 b0b398673dcf0ea146bce6958ac9d83e7fe8dbc0707d99c474f7cc087abba037  ./densematrix-poster-2026sp.pdf
-9691f4f1578d05ce550d112fc6b0f42c2df6900e866578150f7088d319d2ca20  ./index.html
-48b75aeafa43c862b003b274e7f6c0fd7bb8398a8b4dea1bfaf70df13fbbf56e  ./poster.js
-a18788ab6d06e1958fc15859195a62a48d87a7b01e7591f002c87824890f39f9  ./styles.css
+8a582e96dc7bd74562692441de69d8170c73f5e1a4f45a107178fe809ed0eed3  ./index.html
+4e944aa870aac5027efc67599c595515b1d953abee83703935be09e497c54f7e  ./poster.js
+da1e60b23273685d149554896fd42903cf0f7269fededb79da7844812a07be29  ./styles.css

@@ -33,7 +33,7 @@
   };
   const fmtInt = (value) => finite(value) ? Math.round(num(value)).toLocaleString("en-US") : "--";
   const fmtHours = (value) => finite(value) ? `${fmt(value, 2)} h` : "--";
-  const fmtSpeedup = (value) => finite(value) ? `${fmt(value, 2)}x` : "--x";
+  const fmtSpeedup = (value) => finite(value) ? `${num(value).toFixed(2)}x` : "--x";
   const escapeHtml = (value) => String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
