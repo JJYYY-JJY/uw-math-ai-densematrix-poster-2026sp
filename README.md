@@ -6,8 +6,8 @@ poster.
 ## Contents
 
 - `densematrix-poster-2026sp.pdf`: poster PDF.
-- `index.html`: poster and benchmark overview page.
-- `artifact.html`: public artifact file index.
+- `index.html`: mobile-first poster and benchmark overview page.
+- `artifact.html`: artifact evidence and file index.
 - `densematrix-benchmark-bundle-20260605/`: complete extracted benchmark bundle.
 - `data/poster-data.json`: compact web data derived from the bundle.
 - `REPRODUCE.md`: smoke and full reproduction commands.
@@ -23,5 +23,6 @@ poster.
 - Main claim: DenseMatrix has 20.93x median square-multiplication speedup over
   mathlib Matrix in this benchmark, with 19.17x speedup at n=2048.
 
-See `densematrix-benchmark-bundle-20260605/README.md` for the benchmark bundle
-and `REPRODUCE.md` for reproduction commands.
+See `artifact.html` for browser-friendly evidence links,
+`densematrix-benchmark-bundle-20260605/README.md` for the benchmark bundle, and
+`REPRODUCE.md` for reproduction commands.
