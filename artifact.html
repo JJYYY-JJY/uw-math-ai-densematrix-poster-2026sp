@@ -14,16 +14,71 @@
         alt="University of Washington"
       />
       <div class="header-copy">
-        <p class="eyebrow">Public artifact</p>
-        <h1>DenseMatrix Spring 2026 poster materials</h1>
+        <p class="eyebrow">Artifact evidence</p>
+        <h1>DenseMatrix Spring 2026 benchmark package</h1>
         <p class="lead">
-          Poster PDF, benchmark data, generated tables, figures, source
-          snapshot, metadata, and reproduction scripts.
+          Poster PDF, benchmark data, generated tables, figures, source snapshot,
+          metadata, checksums, and reproduction commands.
         </p>
       </div>
     </header>
 
     <main class="artifact-main">
+      <section class="evidence-panel" aria-label="Run evidence">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Run evidence</p>
+            <h2>20260605 benchmark bundle</h2>
+          </div>
+          <a class="button" href="./REPRODUCE.md">Reproduce</a>
+        </div>
+        <dl class="evidence-grid">
+          <div>
+            <dt>Benchmark rev</dt>
+            <dd class="mono-value">b8ddab453721</dd>
+          </div>
+          <div>
+            <dt>Samples</dt>
+            <dd>13,300</dd>
+          </div>
+          <div>
+            <dt>Records</dt>
+            <dd>266</dd>
+          </div>
+          <div>
+            <dt>Checksum mismatches</dt>
+            <dd>0</dd>
+          </div>
+          <div>
+            <dt>Elapsed time</dt>
+            <dd>30.85 h</dd>
+          </div>
+          <div>
+            <dt>Largest square size</dt>
+            <dd>n=2048</dd>
+          </div>
+          <div>
+            <dt>Warmups</dt>
+            <dd>10</dd>
+          </div>
+          <div>
+            <dt>Repeats</dt>
+            <dd>50</dd>
+          </div>
+        </dl>
+        <div class="hash-list" aria-label="Artifact hashes">
+          <div>
+            <span>Poster PDF SHA256</span>
+            <code>b0b398673dcf0ea146bce6958ac9d83e7fe8dbc0707d99c474f7cc087abba037</code>
+          </div>
+          <div>
+            <span>Bundle input SHA256</span>
+            <code>f731578bbaaddc45fae5d9beb534789070beb9ec14a403a984aee62c88488ad1</code>
+          </div>
+        </div>
+        <pre class="command-line"><code>./densematrix-benchmark-bundle-20260605/scripts/reproduce_quick_smoke.sh</code></pre>
+      </section>
+
       <section class="download-grid" aria-label="Artifact files">
         <a href="./densematrix-poster-2026sp.pdf#zoom=page-width">
           <strong>Poster PDF</strong>

@@ -42,20 +42,25 @@
 
   const mulSummary = operations.find((row) => row.operation === "mul_square") || {};
   const mulEndpoint = endpointRows.find((row) => row.operation === "mul_square") || {};
+  const shortRev = String(bundle.git_rev || "").slice(0, 12) || "--";
 
   setText("metric-speedup", fmtSpeedup(mulSummary.median_speedup));
-  setText("metric-records", fmtInt(run.record_count));
+  setText("metric-endpoint-summary", fmtSpeedup(mulEndpoint.speedup_mathlib_over_dense));
   setText("metric-samples", fmtInt(run.sample_count));
-  setText("metric-max-n", finite(run.max_n) ? `n=${fmtInt(run.max_n)}` : "--");
+  setText("metric-mismatches-summary", fmtInt(run.checksum_mismatch_count));
   setText("metric-endpoint", `${fmtSpeedup(mulEndpoint.speedup_mathlib_over_dense)} at n=2048`);
   setText("fact-warmups", fmtInt(run.warmups));
   setText("fact-repeats", fmtInt(run.repeats));
   setText("fact-core", finite(run.core) ? `CPU ${fmtInt(run.core)}` : "--");
   setText("fact-hours", fmtHours(run.elapsed_hours));
   setText("fact-mismatches", fmtInt(run.checksum_mismatch_count));
+  setText("evidence-repeats", `${fmtInt(run.repeats)} repeats`);
+  setText("evidence-core", finite(run.core) ? `CPU ${fmtInt(run.core)}` : "CPU --");
+  setText("evidence-mismatches", `${fmtInt(run.checksum_mismatch_count)} checksum mismatches`);
+  setText("evidence-rev", `rev ${shortRev}`);
   setText(
     "source-line",
-    `${bundle.name || "densematrix-benchmark-bundle-20260605"} at ${String(bundle.git_rev || "").slice(0, 12)}`
+    `${bundle.name || "densematrix-benchmark-bundle-20260605"} at ${shortRev}`
   );
 
   renderRuntimeChart(mulRows);

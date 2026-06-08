@@ -15,15 +15,16 @@
       />
       <div class="header-copy">
         <p class="eyebrow">UW Math AI Lab</p>
-        <h1>DenseMatrix: a computationally efficient matrix representation in Lean</h1>
+        <h1>DenseMatrix square multiplication benchmark artifact</h1>
         <p class="lead">
-          Public poster export and benchmark artifact for the Spring 2026
-          Provable Computation project.
+          Spring 2026 poster, benchmark data, runnable source snapshot, and
+          reproduction commands for the compiled Lean benchmark.
         </p>
       </div>
       <nav class="header-actions" aria-label="Primary links">
-        <a class="button primary" href="./densematrix-poster-2026sp.pdf#zoom=page-width">Poster PDF</a>
-        <a class="button" href="./artifact.html">Artifact Index</a>
+        <a class="button primary" href="./densematrix-poster-2026sp.pdf#zoom=page-width">Open Poster</a>
+        <a class="button" href="./REPRODUCE.md">Reproduce</a>
+        <a class="button" href="./artifact.html">Artifact Evidence</a>
       </nav>
     </header>
 
@@ -34,41 +35,28 @@
           <strong>median multiplication speedup</strong>
         </div>
         <div class="metric">
-          <span id="metric-records">--</span>
-          <strong>benchmark records</strong>
+          <span id="metric-endpoint-summary">--x</span>
+          <strong>at n=2048</strong>
         </div>
         <div class="metric">
           <span id="metric-samples">--</span>
           <strong>measured samples</strong>
         </div>
         <div class="metric">
-          <span id="metric-max-n">--</span>
-          <strong>largest square size</strong>
+          <span id="metric-mismatches-summary">--</span>
+          <strong>paired checksum mismatches</strong>
         </div>
       </section>
 
-      <section class="poster-frame" aria-label="Poster preview">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Poster</p>
-            <h2>Display-ready PDF</h2>
-          </div>
-          <a class="button" href="./densematrix-poster-2026sp.pdf#zoom=page-width">Open PDF</a>
-        </div>
-        <object
-          class="pdf-object"
-          data="./densematrix-poster-2026sp.pdf#zoom=page-width"
-          type="application/pdf"
-        >
-          <p>
-            PDF preview is unavailable in this browser.
-            <a href="./densematrix-poster-2026sp.pdf#zoom=page-width">Open the poster PDF.</a>
-          </p>
-        </object>
+      <section class="evidence-strip" aria-label="Benchmark evidence">
+        <span id="evidence-repeats">-- repeats</span>
+        <span id="evidence-core">CPU --</span>
+        <span id="evidence-mismatches">-- checksum mismatches</span>
+        <span id="evidence-rev">rev --</span>
       </section>
 
       <section class="content-grid" aria-label="Benchmark details">
-        <article class="panel wide-panel">
+        <article class="panel chart-panel">
           <div class="section-heading">
             <div>
               <p class="eyebrow">Benchmark</p>
@@ -92,16 +80,64 @@
         </article>
 
         <article class="panel">
-          <p class="eyebrow">Operation summary</p>
-          <h2>Median speedup</h2>
+          <p class="eyebrow">Kernel overview</p>
+          <h2>Median speedup by kernel</h2>
           <div id="operation-summary" class="bar-list"></div>
         </article>
 
-        <article class="panel wide-panel">
+        <article class="panel full-panel">
           <p class="eyebrow">Endpoint</p>
           <h2>n=2048 results</h2>
           <div id="endpoint-table" class="table-wrap"></div>
         </article>
+      </section>
+
+      <section class="artifact-links" aria-label="Artifact evidence links">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Artifact evidence</p>
+            <h2>Data, source, and checksums</h2>
+          </div>
+          <a class="button" href="./artifact.html">Open Evidence</a>
+        </div>
+        <div class="download-grid compact-grid">
+          <a href="./REPRODUCE.md">
+            <strong>Reproduce</strong>
+            <span>Smoke and full benchmark commands</span>
+          </a>
+          <a href="./densematrix-benchmark-bundle-20260605/data/results.jsonl">
+            <strong>Raw Results</strong>
+            <span>266 JSONL records with per-repeat samples</span>
+          </a>
+          <a href="./densematrix-benchmark-bundle-20260605/repo/README.md">
+            <strong>Source Snapshot</strong>
+            <span>Bundled Lean checkout used for reproduction</span>
+          </a>
+          <a href="./SHA256SUMS">
+            <strong>Checksums</strong>
+            <span>Integrity hashes for tracked artifact files</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="poster-frame" aria-label="Poster preview">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Poster</p>
+            <h2>Display-ready PDF</h2>
+          </div>
+          <a class="button" href="./densematrix-poster-2026sp.pdf#zoom=page-width">Open PDF</a>
+        </div>
+        <object
+          class="pdf-object"
+          data="./densematrix-poster-2026sp.pdf#zoom=page-width"
+          type="application/pdf"
+        >
+          <p>
+            PDF preview is unavailable in this browser.
+            <a href="./densematrix-poster-2026sp.pdf#zoom=page-width">Open the poster PDF.</a>
+          </p>
+        </object>
       </section>
     </main>
 
